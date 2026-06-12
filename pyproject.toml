@@ -1,0 +1,53 @@
+[project]
+name = "arestoteles"
+version = "0.1.0"
+description = "AI-assisted swing/position portfolio manager for semiconductors + AI infrastructure. The AI proposes, code disposes."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+dependencies = [
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "httpx>=0.27",
+    "feedparser>=6.0.11",
+    "anthropic>=0.40",
+    "alpaca-py>=0.33",
+    "python-telegram-bot>=21.6",
+    "sqlalchemy>=2.0.35",
+    "psycopg[binary]>=3.2",
+    "structlog>=24.4",
+    "pyyaml>=6.0.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "respx>=0.21",
+    "ruff>=0.7",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/arestoteles"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["SIM108"]  # ternaries are not always clearer
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = ["error::RuntimeWarning"]
+markers = [
+    "live: tests that hit real external services (excluded from CI; run with -m live)",
+]
+addopts = "-m 'not live'"

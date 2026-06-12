@@ -3,36 +3,40 @@
 # Last reviewed: 2026-06-13 (initial).
 
 traded:
+  # subcluster = correlated-link taxonomy for the [risk] sub-cluster cap (docs/05).
+  # Values: compute-silicon, networking, memory, analog, foundry, equipment, eda,
+  # dc-builder, power-cooling. "analog" added 2026-06-13: TXN/ADI/ON sit off the AI
+  # value-chain map (no flows_to group), so they get their own correlation bucket.
   # GPU / compute
-  - {ticker: NVDA, name: NVIDIA,            role: gpu-accelerators}
-  - {ticker: AMD,  name: AMD,               role: gpu-cpu}
-  - {ticker: INTC, name: Intel,             role: cpu-foundry-turnaround, note: high narrative risk - thesis must be filing-based}
-  - {ticker: QCOM, name: Qualcomm,          role: mobile-edge-silicon}
-  - {ticker: ARM,  name: Arm Holdings,      role: ip-licensing}
+  - {ticker: NVDA, name: NVIDIA,            role: gpu-accelerators,    subcluster: compute-silicon}
+  - {ticker: AMD,  name: AMD,               role: gpu-cpu,             subcluster: compute-silicon}
+  - {ticker: INTC, name: Intel,             role: cpu-foundry-turnaround, subcluster: compute-silicon, note: high narrative risk - thesis must be filing-based}
+  - {ticker: QCOM, name: Qualcomm,          role: mobile-edge-silicon, subcluster: compute-silicon}
+  - {ticker: ARM,  name: Arm Holdings,      role: ip-licensing,        subcluster: compute-silicon}
   # Networking / custom silicon / interconnect
-  - {ticker: AVGO, name: Broadcom,          role: custom-asic-networking}
-  - {ticker: MRVL, name: Marvell,           role: custom-silicon-optics}
-  - {ticker: ANET, name: Arista Networks,   role: datacenter-networking}
-  - {ticker: ALAB, name: Astera Labs,       role: connectivity, note: mid-cap - smaller size cap applies}
-  - {ticker: CRDO, name: Credo,             role: interconnect, note: mid-cap - smaller size cap applies}
+  - {ticker: AVGO, name: Broadcom,          role: custom-asic-networking, subcluster: networking}
+  - {ticker: MRVL, name: Marvell,           role: custom-silicon-optics,  subcluster: networking}
+  - {ticker: ANET, name: Arista Networks,   role: datacenter-networking,  subcluster: networking}
+  - {ticker: ALAB, name: Astera Labs,       role: connectivity,           subcluster: networking, note: mid-cap - smaller size cap applies}
+  - {ticker: CRDO, name: Credo,             role: interconnect,           subcluster: networking, note: mid-cap - smaller size cap applies}
   # Memory
-  - {ticker: MU,   name: Micron,            role: memory-hbm}
+  - {ticker: MU,   name: Micron,            role: memory-hbm,          subcluster: memory}
   # Analog / power
-  - {ticker: TXN,  name: Texas Instruments, role: analog-industrial}
-  - {ticker: ADI,  name: Analog Devices,    role: analog}
-  - {ticker: ON,   name: onsemi,            role: power-auto}
+  - {ticker: TXN,  name: Texas Instruments, role: analog-industrial,   subcluster: analog}
+  - {ticker: ADI,  name: Analog Devices,    role: analog,              subcluster: analog}
+  - {ticker: "ON", name: onsemi,            role: power-auto,          subcluster: analog}  # quoted: bare ON is YAML for boolean true
   # Foundry & equipment & EDA
-  - {ticker: TSM,  name: TSMC (ADR),        role: foundry, note: monthly revenue ~10th of month is a key signal}
-  - {ticker: ASML, name: ASML (US listing), role: litho-equipment}
-  - {ticker: AMAT, name: Applied Materials, role: equipment}
-  - {ticker: LRCX, name: Lam Research,      role: equipment}
-  - {ticker: KLAC, name: KLA,               role: equipment-metrology}
-  - {ticker: SNPS, name: Synopsys,          role: eda-ip}
-  - {ticker: CDNS, name: Cadence,           role: eda-ip}
+  - {ticker: TSM,  name: TSMC (ADR),        role: foundry,             subcluster: foundry, note: monthly revenue ~10th of month is a key signal}
+  - {ticker: ASML, name: ASML (US listing), role: litho-equipment,     subcluster: equipment}
+  - {ticker: AMAT, name: Applied Materials, role: equipment,           subcluster: equipment}
+  - {ticker: LRCX, name: Lam Research,      role: equipment,           subcluster: equipment}
+  - {ticker: KLAC, name: KLA,               role: equipment-metrology, subcluster: equipment}
+  - {ticker: SNPS, name: Synopsys,          role: eda-ip,              subcluster: eda}
+  - {ticker: CDNS, name: Cadence,           role: eda-ip,              subcluster: eda}
   # AI systems / datacenter physical layer
-  - {ticker: DELL, name: Dell,              role: ai-servers}
-  - {ticker: VRT,  name: Vertiv,            role: power-cooling}
-  - {ticker: ORCL, name: Oracle,            role: hyperscaler-datacenter-builder, note: promoted monitored->traded 2026-06-13 - value-chain node we hold}
+  - {ticker: DELL, name: Dell,              role: ai-servers,          subcluster: dc-builder}
+  - {ticker: VRT,  name: Vertiv,            role: power-cooling,       subcluster: power-cooling}
+  - {ticker: ORCL, name: Oracle,            role: hyperscaler-datacenter-builder, subcluster: dc-builder, note: promoted monitored->traded 2026-06-13 - value-chain node we hold}
 
 excluded_deliberately:
   - {ticker: SMCI, reason: accounting-controversy history; news-driven AI is exactly the wrong owner for contested-narrative names}
@@ -41,10 +45,10 @@ bench: # candidates for future swaps, monitored loosely
   [NXPI, MCHP, TER, COHR, STX, WDC]
 
 monitored_only: # never traded; their statements are demand signals for holdings
-  - {ticker: MSFT,  signal: capex guidance, Azure commentary}
-  - {ticker: GOOGL, signal: capex guidance, TPU roadmap}
-  - {ticker: AMZN,  signal: AWS capex + custom silicon}
-  - {ticker: META,  signal: capex guidance}
+  - {ticker: MSFT,  signal: "capex guidance, Azure commentary"}
+  - {ticker: GOOGL, signal: "capex guidance, TPU roadmap"}
+  - {ticker: AMZN,  signal: "AWS capex + custom silicon"}
+  - {ticker: META,  signal: "capex guidance"}
   # ORCL promoted to the traded list (2026-06-13) — now a value-chain node we hold, not just a signal source
 
 # Value-chain map (docs/04 Layer 0): the structural relationships the analyst reasons over.
