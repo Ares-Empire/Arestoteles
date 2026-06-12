@@ -1,0 +1,72 @@
+# Arestoteles configuration — copy to config.toml (gitignored) on the server.
+# These values ARE the v1 spec; docs/05 and docs/07 explain every number.
+# Secrets never live here -> .env only.
+
+[mode]
+trading_mode = "paper"          # paper | live  (live requires Phase 5 gate, docs/08)
+approval_mode = "human_v1"      # human_v1 | auto_exits_v2 | full_auto_v3 (gates in docs/05)
+halted = false                  # also settable via Telegram /halt
+
+[models]
+triage = "claude-haiku-4-5"
+analyst = "claude-sonnet-4-6"
+skeptic = "claude-sonnet-4-6"
+deep_review = "claude-opus-4-8" # weekly/monthly, via Batch API
+# pricing assumptions (EUR/USD ~1.08) live in docs/07; re-check on model upgrades
+
+[budgets]                        # hard stops -> degrade to free-feeds-only + alert
+max_searches_per_day = 40
+max_search_uses_per_topic = 4
+max_research_topics_per_run = 8
+max_api_eur_per_month = 80
+max_tokens_per_run = 1_500_000
+
+[risk]                           # enforcement values - changes need user approval (CLAUDE.md)
+max_position_pct_nav = 10.0
+trim_threshold_pct_nav = 13.0
+max_positions = 10
+min_cash_pct = 15.0
+max_subcluster_pct_nav = 35.0     # correlated-cluster guard (docs/05): max NAV in one chain-link (compute-silicon/networking/memory/power-cooling/equipment/EDA/foundry/dc-builder)
+min_subclusters_when_invested = 3 # spread across links that break at different times, not one golden path
+base_position_pct = 5.0
+max_size_pct_by_risk_grade = {low = 10.0, med = 7.0, high = 4.0}
+max_new_capital_per_day_pct = 20.0
+max_orders_per_day = 3
+max_orders_per_week = 10
+hard_stop_loss_pct = 18.0
+review_trigger_loss_pct = 10.0
+reentry_cooldown_trading_days = 10
+earnings_blackout_days = 2
+staleness_max_price_drift_pct = 3.0
+max_order_pct_adv20 = 1.0
+limit_band_pct = 0.3
+min_conviction_new_buy = 70
+min_conviction_add = 65
+conviction_cap_when_skeptic_weakened = 65
+
+[risk.circuit_breakers]          # drawdown from NAV high-water mark
+halve_sizes_at_pct = 10.0
+no_new_buys_at_pct = 15.0
+full_halt_at_pct = 20.0
+
+[schedule]                       # server TZ Europe/Berlin; runs verify Alpaca /clock
+morning_sweep = "07:30"
+main_run = "13:30"
+post_close = "22:15"
+weekly_review = "Sat 10:00"
+monthly_review = "first Sat 11:00"
+max_event_triggered_runs_per_day = 2
+no_orders_first_minutes_after_open = 5
+
+[research]
+recency_window_days = 7
+evidence_max_age_for_new_entry_days = 14
+triage_threshold = 6             # >=6 researches; >=5 if it touches a holding
+two_source_rule = true
+
+[telegram]
+digest_time = "22:20"
+approval_timeout = "market_close"
+
+[aresium]
+api_bind = "0.0.0.0:8742"        # internal docker network only; bearer token in .env

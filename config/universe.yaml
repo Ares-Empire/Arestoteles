@@ -1,0 +1,105 @@
+# Arestoteles universe — single source of truth for what may be traded/researched.
+# Changes only at the monthly review (docs/10). All traded names: US-listed, liquid.
+# Last reviewed: 2026-06-13 (initial).
+
+traded:
+  # GPU / compute
+  - {ticker: NVDA, name: NVIDIA,            role: gpu-accelerators}
+  - {ticker: AMD,  name: AMD,               role: gpu-cpu}
+  - {ticker: INTC, name: Intel,             role: cpu-foundry-turnaround, note: high narrative risk - thesis must be filing-based}
+  - {ticker: QCOM, name: Qualcomm,          role: mobile-edge-silicon}
+  - {ticker: ARM,  name: Arm Holdings,      role: ip-licensing}
+  # Networking / custom silicon / interconnect
+  - {ticker: AVGO, name: Broadcom,          role: custom-asic-networking}
+  - {ticker: MRVL, name: Marvell,           role: custom-silicon-optics}
+  - {ticker: ANET, name: Arista Networks,   role: datacenter-networking}
+  - {ticker: ALAB, name: Astera Labs,       role: connectivity, note: mid-cap - smaller size cap applies}
+  - {ticker: CRDO, name: Credo,             role: interconnect, note: mid-cap - smaller size cap applies}
+  # Memory
+  - {ticker: MU,   name: Micron,            role: memory-hbm}
+  # Analog / power
+  - {ticker: TXN,  name: Texas Instruments, role: analog-industrial}
+  - {ticker: ADI,  name: Analog Devices,    role: analog}
+  - {ticker: ON,   name: onsemi,            role: power-auto}
+  # Foundry & equipment & EDA
+  - {ticker: TSM,  name: TSMC (ADR),        role: foundry, note: monthly revenue ~10th of month is a key signal}
+  - {ticker: ASML, name: ASML (US listing), role: litho-equipment}
+  - {ticker: AMAT, name: Applied Materials, role: equipment}
+  - {ticker: LRCX, name: Lam Research,      role: equipment}
+  - {ticker: KLAC, name: KLA,               role: equipment-metrology}
+  - {ticker: SNPS, name: Synopsys,          role: eda-ip}
+  - {ticker: CDNS, name: Cadence,           role: eda-ip}
+  # AI systems / datacenter physical layer
+  - {ticker: DELL, name: Dell,              role: ai-servers}
+  - {ticker: VRT,  name: Vertiv,            role: power-cooling}
+  - {ticker: ORCL, name: Oracle,            role: hyperscaler-datacenter-builder, note: promoted monitored->traded 2026-06-13 - value-chain node we hold}
+
+excluded_deliberately:
+  - {ticker: SMCI, reason: accounting-controversy history; news-driven AI is exactly the wrong owner for contested-narrative names}
+
+bench: # candidates for future swaps, monitored loosely
+  [NXPI, MCHP, TER, COHR, STX, WDC]
+
+monitored_only: # never traded; their statements are demand signals for holdings
+  - {ticker: MSFT,  signal: capex guidance, Azure commentary}
+  - {ticker: GOOGL, signal: capex guidance, TPU roadmap}
+  - {ticker: AMZN,  signal: AWS capex + custom silicon}
+  - {ticker: META,  signal: capex guidance}
+  # ORCL promoted to the traded list (2026-06-13) — now a value-chain node we hold, not just a signal source
+
+# Value-chain map (docs/04 Layer 0): the structural relationships the analyst reasons over.
+# Demand originates at AI labs / hyperscaler capex and flows downstream. A reasoning aid, NOT
+# the traded list. Maintained at weekly/monthly review.
+value_chain_map:
+  demand_sources: ["AI labs (Anthropic, OpenAI — private)", MSFT, GOOGL, AMZN, META, ORCL]
+  flows_to:
+    datacenter_buildout: [VRT, DELL, "datacenter REITs / utilities — see downstream_candidates"]
+    compute_silicon: [NVDA, AMD, AVGO, MRVL]
+    networking_interconnect: [ANET, AVGO, MRVL, ALAB, CRDO]
+    memory: [MU]
+    foundry: [TSM]                         # advanced-packaging (CoWoS) capacity = structural choke point
+    equipment_enabling_foundry: [ASML, AMAT, LRCX, KLAC]
+    design_tools: [SNPS, CDNS]
+  key_bottlenecks: ["TSMC advanced packaging (CoWoS) capacity", "HBM supply", "datacenter power / grid"]
+
+# DYNAMIC UNIVERSE (docs/02 §3a): the edge is finding profitable dynamics and acting on EVERY
+# part of a chain — so the system may discover and propose new value-chain nodes to trade.
+# Discovery != auto-trade: a proposed node is tradeable only after it clears the promotion gate,
+# which preserves cost + anti-manipulation discipline.
+node_promotion_gate:
+  - large/mid cap + liquid only (market_cap >= 5e9, avg_daily_volume_usd >= 1e8) — no microcaps, the manipulation defense is non-negotiable
+  - has a dossier + at least one whitelisted source domain added
+  - passes a structural thesis (chain + priced_in_check + falsifiers, docs/04 Layer 5)
+  - sits inside the AI-infrastructure theme (not an unrelated sector — that's the focus rule)
+  - added at a review, or intra-month if flagged urgent; logged; each node costs search budget
+
+# CHAIN-WALKING DISCOVERY (docs/04): a PRIORITIZED behavior, not a list. When the system validates
+# a profitable / strengthening value chain, it should proactively walk to LINKED nodes and research
+# them with priority — then gate each before trading. No tickers are hardcoded on purpose: the
+# universe grows from what the walk discovers, not from a maintained shopping list. (One example of
+# the mechanism, not a list: a datacenter-buildout chain implies power + physical-buildout exposure
+# — reached by walking the edges, never by being pre-listed.)
+chain_walking_discovery:
+  prioritize: true            # linked-node research outranks generic news triage once a chain is validated
+  walk_edges: [supplies_to, buys_from, funds, shares_bottleneck_with, physical_dependency_of]
+  then: node_promotion_gate   # discovery proposes; the gate decides tradeability
+  # sizing discipline is SEPARATE — see docs/05 concentration: walk freely to discover, cap hard to size
+
+benchmarks:
+  primary: equal_weight_universe   # computed internally from traded list
+  secondary: [SOXX, QQQ]
+
+constraints:
+  listing: US exchanges only (NYSE/Nasdaq)
+  min_market_cap_usd: 5e9
+  min_avg_daily_volume_usd: 1e8
+
+# Web-search domain whitelist (docs/04). Server-enforced via allowed_domains.
+# Reviewed monthly; verify liveness/paywall status at implementation.
+search_whitelist:
+  wires_and_pr: [reuters.com, apnews.com, cnbc.com, businesswire.com, prnewswire.com, globenewswire.com, stocktitan.net]
+  regulator: [sec.gov]
+  specialist: [semianalysis.com, tomshardware.com, theregister.com, arstechnica.com, techcrunch.com, theverge.com, nextplatform.com, datacenterdynamics.com, servethehome.com, eetimes.com, trendforce.com, counterpointresearch.com]
+  reference: [stockanalysis.com, macrotrends.net, finance.yahoo.com]
+  headline_only: [bloomberg.com, ft.com, wsj.com]   # paywalled: may seed a claim, never solely support one
+  company_ir: [nvidia.com, amd.com, intel.com, qualcomm.com, arm.com, broadcom.com, marvell.com, arista.com, asteralabs.com, credosemi.com, micron.com, ti.com, analog.com, onsemi.com, tsmc.com, asml.com, appliedmaterials.com, lamresearch.com, kla.com, synopsys.com, cadence.com, dell.com, vertiv.com]
