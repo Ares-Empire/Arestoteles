@@ -61,6 +61,20 @@ class Snapshot(FrozenModel):
         return (self.latest_price - self.prev_close) / self.prev_close * 100.0
 
 
+class BrokerPosition(FrozenModel):
+    ticker: str
+    qty: float
+    avg_entry_price: float
+    market_value: float
+    unrealized_pnl: float
+
+
+class AccountState(FrozenModel):
+    equity: float  # NAV
+    cash: float
+    positions: tuple[BrokerPosition, ...] = ()
+
+
 # --- pure conversions & math (unit-tested with stubs) -------------------------
 
 
@@ -191,3 +205,20 @@ class AlpacaData:
             if snap is not None:
                 out[t] = snap
         return out
+
+    def account_state(self) -> AccountState:
+        """Broker truth for snapshots/reconciliation. Read-only — order placement
+        is the Phase 3 execution module, never this class."""
+        acct = self._trading.get_account()
+        raw_positions = self._trading.get_all_positions()
+        positions = tuple(
+            BrokerPosition(
+                ticker=p.symbol,
+                qty=float(p.qty),
+                avg_entry_price=float(p.avg_entry_price),
+                market_value=float(p.market_value or 0),
+                unrealized_pnl=float(p.unrealized_pl or 0),
+            )
+            for p in raw_positions
+        )
+        return AccountState(equity=float(acct.equity), cash=float(acct.cash), positions=positions)
