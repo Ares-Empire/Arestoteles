@@ -20,8 +20,12 @@ cp config/config.example.toml config/config.toml   # tune only with care: [risk]
 docker compose build
 docker compose up -d db
 docker compose run --rm app python -m arestoteles.db.migrate
+docker compose run --rm app python -m arestoteles.preflight   # verify .env reaches every service
 docker compose up -d bot         # then send /status to the bot to verify
 ```
+
+`preflight` is side-effect-free (no orders, no messages, no DB writes) and exits non-zero if any
+configured service is unreachable — run it anytime you change `.env`.
 
 ## 2. Smoke test by hand (before enabling timers)
 
