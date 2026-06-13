@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Arestoteles main run 13:30 Mon-Fri (~1h before NY open; the job itself checks the Alpaca clock for DST/holidays)
+
+[Timer]
+OnCalendar=Mon..Fri 13:30
+RandomizedDelaySec=60
+Persistent=false
+
+[Install]
+WantedBy=timers.target

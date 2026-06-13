@@ -1,0 +1,9 @@
+[Unit]
+Description=Arestoteles main pre-open run (full pipeline once Phase 2+ lands)
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/arestoteles
+ExecStart=/usr/bin/docker compose run --rm app python -m arestoteles.runs.main_run

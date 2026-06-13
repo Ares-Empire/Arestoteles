@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Arestoteles morning sweep 07:30 Mon-Fri (server TZ Europe/Berlin)
+
+[Timer]
+OnCalendar=Mon..Fri 07:30
+RandomizedDelaySec=120
+Persistent=false
+
+[Install]
+WantedBy=timers.target
