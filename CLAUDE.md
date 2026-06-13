@@ -97,6 +97,18 @@ Today's phase and next steps: see "Status" below — keep it updated.
   wired into deploy/README) + test; renamed the bust source asset and committed the avatar.
   **Phase 1 exit now only needs the user:** Hetzner deploy (needs server access) + ~1 week unattended.
   **Phase 2 stays gated on ANTHROPIC_API_KEY + an explicit budget go-ahead — not started.**
+- 2026-06-13: **DEPLOYED to the shared `InsureServer` host** (178.105.214.242 — same box as insureai +
+  aresium + flatsniper, NOT a standalone Hetzner host) at `/opt/arestoteles` (`/root/Arestoteles`
+  symlinks to it). Preflight all green (config/db/alpaca-paper/telegram @arestoteles1_bot/finnhub/edgar).
+  By-hand smoke test passed live on the server: morning_sweep (run 1: 2586 rss + 11 edgar + 3 move
+  events) → main_run --force (run 2: dedup to 0, HOLD) → post_close --force (run 3: paper NAV $100k,
+  digest sent). Bot up (sole Telegram poller now). 3 systemd timers enabled. **Two deviations from
+  deploy/README, both deliberate for the shared host:** (1) host TZ left at UTC; instead pinned
+  `Europe/Berlin` inside each timer's `OnCalendar` (systemd 259 supports it) so insureai/aresium/
+  flatsniper clocks are untouched — schedules verified identical (13:30 Berlin = 11:30 UTC). (2) the
+  arestoteles `db` has no host-port binding so it coexists with aresium's `127.0.0.1:5432` postgres.
+  **Known issue:** `rss:cnbc_tech` returns 403 from this server's IP (55/56 feeds ok; non-fatal warning).
+  **Phase 1 exit now only needs ~1 week unattended with the risk engine green.**
 
 ## Open decisions (user must answer; do not assume)
 
