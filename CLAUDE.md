@@ -111,23 +111,25 @@ Today's phase and next steps: see "Status" below — keep it updated.
   **Phase 1 exit now only needs ~1 week unattended with the risk engine green.**
 - 2026-06-13: **Web/integration direction decided (docs/09 rewritten + new docs/11).** Resolved the
   Aresium-read-pattern open decision: **read-only REST API** (not shared DB). Bigger call: Arestoteles
-  gets its **own epic broker-style site at a subdomain** (`arestoteles.aresium.de`) sharing Aresium's
-  exact design language ("Ares Empire"), with only a **compact Investments overview card inside Aresium**
-  that deep-links across — supersedes the old "render Investments inside Aresium" plan. Added a
-  `/positions/{ticker}/bars` endpoint (per-stock range graphs), an empire-SSO option (shared
-  `.aresium.de` HMAC cookie), and the deploy seam (insureai_nginx subdomain + the aresium gateway/ufw
-  gotchas). docs/11 holds the design brief (bust-drop+crater intro, on-the-wall charts, broker refs) and
-  a copy-paste design prompt. **Caveat:** the API doesn't exist yet (pulls Phase-4 API forward) and there
-  are zero positions until Phase 2 — build the shell now, it fills when the brain trades. Not yet built.
+  gets its **own epic broker-style site at its own domain `arestoteles.de`** sharing Aresium's exact
+  design language ("Ares Empire"), with only a **compact Investments overview card inside Aresium** that
+  deep-links across — supersedes the old "render Investments inside Aresium" plan. A **central Ares
+  manager/hub** is the adopted empire home + future SSO provider. Added a `/positions/{ticker}/bars`
+  endpoint (per-stock range graphs) and the deploy seam (insureai_nginx server block + the aresium
+  gateway/ufw gotchas). **SSO:** aresium.de & arestoteles.de are separate domains so no shared-cookie
+  trick — Arestoteles ships its **own custom login now** (port Aresium's scrypt+HMAC pattern), hub-SSO
+  later. docs/11 holds the design brief (depth bust-drop+crater intro, on-the-wall charts; refs =
+  Robinhood/Bloomberg/Linear; attach Aresium's files) + a copy-paste design prompt; the intro must be
+  built as working motion, not a static frame. **Caveat:** the API doesn't exist yet (pulls Phase-4
+  forward) and there are zero positions until Phase 2 — build the shell now, fills when the brain trades.
 
 ## Open decisions (user must answer; do not assume)
 
 1. **Live broker** (Phase 5): Alpaca international vs. IBKR — depends on funding fees from a
    German bank account (Alpaca is USD-only via wire/Rapyd; IBKR takes free SEPA). Not urgent.
 2. **Capital for live phase** and the monthly loss cap that triggers shutdown.
-3. ~~Aresium read pattern~~ — **decided: read-only REST API** (docs/09). Remaining sub-choices:
-   subdomain `arestoteles.aresium.de` vs. a dedicated `arestoteles.de`; empire-SSO (shared
-   `.aresium.de` cookie) vs. an independent Arestoteles login.
+3. ~~Aresium read pattern~~ — **decided: read-only REST API**; **domain `arestoteles.de`**; own
+   custom login now + central-hub SSO later (docs/09). Remaining: build the central Ares manager/hub.
 
 ## Next steps
 

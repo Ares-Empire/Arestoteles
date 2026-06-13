@@ -21,19 +21,23 @@ Why separate site over fully embedded:
 - **Independent deploy/iteration**, and the API was coming anyway (this pulls the Phase-4 API
   forward as the data layer for the site).
 - **It reads as an "empire."** A family of sibling apps under one visual language, each at its
-  own `ares` subdomain, cross-linked from a consistent place — more empire than one monolith.
+  own domain (`aresium.de`, `arestoteles.de`, …), cross-linked from a consistent place — more
+  empire than one monolith.
 
 ### The Ares Empire model (shared design language, separate apps)
 All Ares tools share one identity so the constellation feels deliberate, not assorted:
+- **A central Ares manager** (adopted direction; specifics TBD) — a small hub site that launches
+  every Ares app and acts as the **identity/SSO provider** (see SSO below). It is the empire's home
+  and the clean answer to "everything in one place" without one bloated monolith.
 - **Design system** — the exact Aresium tokens (`web/public/index.html` `<style>`): black wall,
   Space Grotesk + JetBrains Mono, glass side-cards, **charts painted straight on the wall** (no
   card), the big wordmark band at the bottom, tabular-nums everywhere. Arestoteles reuses these
   verbatim (`docs/11`).
-- **A dropping-wordmark intro** per app (Aresium's `aresium-intro.js` is the template; Arestoteles
-  drops a marble bust + crater, then the ARESTOTELES wordmark).
-- **An Ares switcher** — a small launcher (header) listing the apps (Aresium, Arestoteles, future
-  ones). Do **not** hijack Aresium's top-left brand button — single-click there stays the red
-  "Ares mode" easter egg. Add the switcher and the Investments card alongside it.
+- **A dropping intro** per app (Aresium's `aresium-intro.js` is the *animation technique*, not an
+  existing load intro — Aresium only animates the wordmark on its red-mode toggle today).
+  Arestoteles' load intro: a marble bust drops onto the wall + crater, then the ARESTOTELES wordmark.
+- **An Ares switcher / link to the manager** — reachable from each app's header. Do **not** hijack
+  Aresium's top-left brand button — single-click there stays the red "Ares mode" easter egg.
 
 ## Decision: read-only REST API (not a shared database)
 
@@ -94,9 +98,9 @@ positions render with a "thesis pending — fills when the brain goes live" stat
 A new `api` service in the Arestoteles compose (already foreshadowed in `docker-compose.yml`)
 serves **both** the JSON API and the static front-end. To reach it from the public edge it follows
 the exact Aresium pattern, with the same gotchas:
-- **Subdomain** `arestoteles.aresium.de` (default — no new domain, enables empire SSO; a dedicated
-  `arestoteles.de` is a later option). Needs an A/AAAA DNS record → the server, an additive
-  `arestoteles.conf` in `insureai_nginx`'s `conf.d`, and a cert via the shared certbot webroot.
+- **Domain** `arestoteles.de` (its own registrable domain). Needs A/AAAA DNS records → the server,
+  an additive `arestoteles.conf` server block in `insureai_nginx`'s `conf.d`, and a cert via the
+  shared certbot webroot (same mechanism as `aresium.conf`).
 - The `api` container binds the docker-bridge **gateway** (`172.18.0.1:<port>`) like Aresium, or
   joins `insureai_network` — either way needs the `ufw allow from 172.18.0.0/16` rule and inherits
   the **hardcoded-gateway fragility** noted in the Aresium deploy memory.
@@ -104,13 +108,15 @@ the exact Aresium pattern, with the same gotchas:
 
 ### Cross-app auth / SSO (the empire login)
 Aresium authenticates with an HMAC-signed session cookie (`AUTH_SESSION_SECRET`, HttpOnly +
-Secure + SameSite=Lax; `src/web/auth.ts`). Two options:
-- **Recommended — shared session cookie scoped to `.aresium.de`.** Issue the Aresium cookie on the
-  parent domain and have Arestoteles verify the same signed cookie with the **same secret** → one
-  login across the whole empire. Low effort (Arestoteles re-implements the same verify), high
-  payoff, both apps are Patrik's.
-- **Fallback — Arestoteles' own login** (its own password + cookie). More friction, fully
-  independent. Pick this only if subdomain/secret sharing is undesirable.
+Secure + SameSite=Lax; `src/web/auth.ts`). Because `aresium.de` and `arestoteles.de` are **separate
+registrable domains**, a shared parent-domain cookie can't span them — so SSO needs a real
+mechanism:
+- **Target — the central Ares manager as the SSO provider.** Sign in once at the hub; it mints a
+  short-lived signed token that each app exchanges (on a redirect) for its own session cookie. This
+  is the clean cross-domain answer and the reason the hub is worth building.
+- **Now — Arestoteles' own custom login.** Port Aresium's pattern (`src/web/login-page.ts` +
+  `auth.ts`: scrypt password + HMAC cookie) to the FastAPI service, reskinned with the bust. No
+  design pass needed. Independent login until the hub exists; then fold it behind hub-SSO.
 
 ## Sequencing & honest caveat
 
