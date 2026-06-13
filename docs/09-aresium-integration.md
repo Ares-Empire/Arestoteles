@@ -1,17 +1,48 @@
-# 09 — Aresium Integration
+# 09 — Aresium Integration & the Ares Empire
 
-Goal: view Arestoteles' work inside Aresium — every position **with the thesis that justified
-it (why it was bought), source references, planned holding period, and review status** — plus
-performance and running costs, next to the rest of Patrik's finances.
+Goal: view Arestoteles' work — every position **with the thesis that justified it (why it was
+bought), source references, planned holding period, and review status** — plus performance and
+running costs, in a portal that feels like the rest of Patrik's "Ares" tools.
+
+## Decision: separate Arestoteles site + a compact overview card in Aresium
+
+Arestoteles gets its **own front-end at its own subdomain** (an "epic" stock-broker-style
+portal, see `docs/11-web-frontend.md`), **not** a page rendered inside Aresium. Aresium keeps a
+small **Investments overview card** (NAV, today's P&L, top positions sparkline) that deep-links
+into the Arestoteles site. This supersedes the earlier "render the Investments view inside
+Aresium" plan.
+
+Why separate site over fully embedded:
+- **Different stack, different surface.** Aresium is TS/Node; Arestoteles is Python. Cramming a
+  second rich domain (positions, theses, candle charts, AI reasoning) into Aresium's codebase and
+  breadcrumb navigation fights both. Arestoteles serves its own UI from its own FastAPI.
+- **The intro wants the viewport.** The bust-drop + crater hero (`docs/11`) is a full-page
+  experience — natural for a standalone site, awkward as an Aresium sub-route.
+- **Independent deploy/iteration**, and the API was coming anyway (this pulls the Phase-4 API
+  forward as the data layer for the site).
+- **It reads as an "empire."** A family of sibling apps under one visual language, each at its
+  own `ares` subdomain, cross-linked from a consistent place — more empire than one monolith.
+
+### The Ares Empire model (shared design language, separate apps)
+All Ares tools share one identity so the constellation feels deliberate, not assorted:
+- **Design system** — the exact Aresium tokens (`web/public/index.html` `<style>`): black wall,
+  Space Grotesk + JetBrains Mono, glass side-cards, **charts painted straight on the wall** (no
+  card), the big wordmark band at the bottom, tabular-nums everywhere. Arestoteles reuses these
+  verbatim (`docs/11`).
+- **A dropping-wordmark intro** per app (Aresium's `aresium-intro.js` is the template; Arestoteles
+  drops a marble bust + crater, then the ARESTOTELES wordmark).
+- **An Ares switcher** — a small launcher (header) listing the apps (Aresium, Arestoteles, future
+  ones). Do **not** hijack Aresium's top-left brand button — single-click there stays the red
+  "Ares mode" easter egg. Add the switcher and the Investments card alongside it.
 
 ## Decision: read-only REST API (not a shared database)
 
-Arestoteles (Python/FastAPI) exposes a versioned read-only API; Aresium (TS/Prisma) consumes
-it server-side and renders. Rejected alternative — Aresium reading Arestoteles' Postgres
-directly — couples two codebases' migrations and gives Aresium's surface area access to the
-trading DB. Both run on the same Hetzner host, so transport is the internal Docker network
-(or localhost), auth is a static bearer token (`ARESIUM_API_TOKEN` in both `.env`s), nothing
-is exposed publicly.
+Unchanged. Arestoteles (Python/FastAPI) exposes a versioned read-only API; both the Aresium
+overview card **and** the standalone Arestoteles site consume it. Rejected alternative — anything
+reading Arestoteles' Postgres directly — couples two codebases' migrations and widens the trading
+DB's surface. Same Hetzner host, so transport is the internal Docker network / gateway; auth is a
+static bearer token (`ARESIUM_API_TOKEN` in both `.env`s, **server-to-server only** — never in a
+browser). The browser-facing site authenticates users separately (see SSO below).
 
 ## API contract v1 (`GET /api/v1/...`, JSON, all read-only)
 
@@ -19,13 +50,18 @@ is exposed publicly.
 |---|---|
 | `/portfolio` | NAV, cash %, since-inception & daily P&L, mode (paper/live), halted flag |
 | `/positions` | array: ticker, qty, avg_cost, market_value, weight_pct, unrealized_pnl, opened_at, **thesis_id** |
+| `/positions/{ticker}/bars?range=1D\|1W\|1M\|1Y\|ALL\|since` | **OHLC/price series for the per-stock graph** (Alpaca bars; `since` = since opened_at, with the avg-cost guide level) |
 | `/theses/{id}` (and `/theses?status=active`) | the explainability payload — see example |
 | `/decisions?since=…` | decision log: action, conviction, risk_grade, skeptic_verdict, approval, order/fill refs, evidence_ids |
 | `/performance?granularity=daily` | NAV series + the three benchmark series (`docs/02 §4`) |
-| `/costs?month=…` | API cost €/mo by stage, broker fees — so Aresium can show true net |
-| `/health` | last run id/status/time — lets Aresium show "data as of …" |
+| `/costs?month=…` | API cost €/mo by stage, broker fees — so the portal can show true net |
+| `/health` | last run id/status/time — lets the portal show "data as of …" |
 
-Thesis payload (the part the user explicitly asked for — why bought, references, how long):
+The `/positions/{ticker}/bars` endpoint is **new vs. the original contract** — it's what feeds the
+1D/1W/1M/1Y/ALL/Since-purchase range tabs on the per-stock detail screen.
+
+Thesis payload (why bought, references, how long) — **Phase 2+ data**; until the brain trades,
+positions render with a "thesis pending — fills when the brain goes live" state:
 
 ```json
 {
@@ -53,20 +89,53 @@ Thesis payload (the part the user explicitly asked for — why bought, reference
 }
 ```
 
-## Aresium-side plan (its repo, later)
+## Deployment seam (same shared host as Aresium — `aresium-deploy` patterns apply)
 
-1. `ARESTOTELES_URL` + token in Aresium env; thin typed client; data fetched server-side
-   (token never reaches the browser).
-2. New **"Investments"** page: portfolio header (NAV, P&L vs. benchmarks sparkline), position
-   table, expandable **thesis cards** (claim, conviction badge, falsifiers as checklist,
-   citations as links, horizon progress bar "day 23 of 90"), decision log timeline, costs
-   widget (API+fees vs. P&L = honest net).
-3. Mark the page clearly **paper/live**.
-4. Later (v2): Arestoteles → Aresium webhook on each executed decision; Aresium notification
-   center entry. Pull-based v1 is enough (Aresium fetches on page load + 5-min cache).
+A new `api` service in the Arestoteles compose (already foreshadowed in `docker-compose.yml`)
+serves **both** the JSON API and the static front-end. To reach it from the public edge it follows
+the exact Aresium pattern, with the same gotchas:
+- **Subdomain** `arestoteles.aresium.de` (default — no new domain, enables empire SSO; a dedicated
+  `arestoteles.de` is a later option). Needs an A/AAAA DNS record → the server, an additive
+  `arestoteles.conf` in `insureai_nginx`'s `conf.d`, and a cert via the shared certbot webroot.
+- The `api` container binds the docker-bridge **gateway** (`172.18.0.1:<port>`) like Aresium, or
+  joins `insureai_network` — either way needs the `ufw allow from 172.18.0.0/16` rule and inherits
+  the **hardcoded-gateway fragility** noted in the Aresium deploy memory.
+- nginx reload via `docker kill --signal=HUP insureai_nginx` (validate config first).
+
+### Cross-app auth / SSO (the empire login)
+Aresium authenticates with an HMAC-signed session cookie (`AUTH_SESSION_SECRET`, HttpOnly +
+Secure + SameSite=Lax; `src/web/auth.ts`). Two options:
+- **Recommended — shared session cookie scoped to `.aresium.de`.** Issue the Aresium cookie on the
+  parent domain and have Arestoteles verify the same signed cookie with the **same secret** → one
+  login across the whole empire. Low effort (Arestoteles re-implements the same verify), high
+  payoff, both apps are Patrik's.
+- **Fallback — Arestoteles' own login** (its own password + cookie). More friction, fully
+  independent. Pick this only if subdomain/secret sharing is undesirable.
+
+## Sequencing & honest caveat
+
+The portal needs (a) the read API and (b) **actual positions to show**. In Phase 1 the system is
+HOLD-only paper (NAV $100k, **zero positions**), and theses don't exist until Phase 2. So:
+- **Build the shell now** — intro, layout, portfolio header, empty-state ("no open positions yet"),
+  benchmark line — against the live paper `/portfolio` + `/performance`.
+- It **populates as the brain trades (Phase 2)**: position rows, per-stock graphs, thesis cards.
+
+This is consistent with the project's honest framing — build the cathedral first; it fills with
+meaning when the brain goes live.
 
 ## Versioning & stability
 
 The JSON shapes above are the contract; additive changes only within v1, breaking changes ⇒
-`/api/v2`. Arestoteles ships an OpenAPI schema (FastAPI gives it free) so Aresium can generate
-its TS types from it — single source of truth, no drift.
+`/api/v2`. Arestoteles ships an OpenAPI schema (FastAPI gives it free) so Aresium's overview card
+can generate its TS types from it — single source of truth, no drift.
+
+## Aresium-side plan (its repo, later — see Aresium `docs/INVESTMENTS-INTEGRATION.md`)
+
+1. `ARESTOTELES_URL` + token in Aresium env; thin typed client; data fetched **server-side**
+   (token never reaches the browser).
+2. A compact **Investments overview card** on the Aresium overview: NAV, daily & since-inception
+   P&L, a benchmark sparkline, top-N positions — with a button into the Arestoteles site. Marked
+   clearly **paper/live**.
+3. The **Ares switcher** (launcher) for cross-app navigation as the empire grows.
+4. Later (v2): Arestoteles → Aresium webhook on each executed decision; Aresium notification entry.
+   Pull-based v1 is enough (fetch on load + 5-min cache).

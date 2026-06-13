@@ -109,13 +109,25 @@ Today's phase and next steps: see "Status" below — keep it updated.
   arestoteles `db` has no host-port binding so it coexists with aresium's `127.0.0.1:5432` postgres.
   **Known issue:** `rss:cnbc_tech` returns 403 from this server's IP (55/56 feeds ok; non-fatal warning).
   **Phase 1 exit now only needs ~1 week unattended with the risk engine green.**
+- 2026-06-13: **Web/integration direction decided (docs/09 rewritten + new docs/11).** Resolved the
+  Aresium-read-pattern open decision: **read-only REST API** (not shared DB). Bigger call: Arestoteles
+  gets its **own epic broker-style site at a subdomain** (`arestoteles.aresium.de`) sharing Aresium's
+  exact design language ("Ares Empire"), with only a **compact Investments overview card inside Aresium**
+  that deep-links across — supersedes the old "render Investments inside Aresium" plan. Added a
+  `/positions/{ticker}/bars` endpoint (per-stock range graphs), an empire-SSO option (shared
+  `.aresium.de` HMAC cookie), and the deploy seam (insureai_nginx subdomain + the aresium gateway/ufw
+  gotchas). docs/11 holds the design brief (bust-drop+crater intro, on-the-wall charts, broker refs) and
+  a copy-paste design prompt. **Caveat:** the API doesn't exist yet (pulls Phase-4 API forward) and there
+  are zero positions until Phase 2 — build the shell now, it fills when the brain trades. Not yet built.
 
 ## Open decisions (user must answer; do not assume)
 
 1. **Live broker** (Phase 5): Alpaca international vs. IBKR — depends on funding fees from a
    German bank account (Alpaca is USD-only via wire/Rapyd; IBKR takes free SEPA). Not urgent.
 2. **Capital for live phase** and the monthly loss cap that triggers shutdown.
-3. **Aresium read pattern**: REST API (recommended, see `docs/09`) vs. direct DB read.
+3. ~~Aresium read pattern~~ — **decided: read-only REST API** (docs/09). Remaining sub-choices:
+   subdomain `arestoteles.aresium.de` vs. a dedicated `arestoteles.de`; empire-SSO (shared
+   `.aresium.de` cookie) vs. an independent Arestoteles login.
 
 ## Next steps
 

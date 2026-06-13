@@ -38,7 +38,8 @@ theses, citations, and planned holding periods are viewable there.
 | `docs/06-brokers-and-execution.md` | Alpaca vs. IBKR, PDT rule, order policy, fees, market data, German tax notes. |
 | `docs/07-costs-and-capital.md` | Full cost model (API/broker/server), cadence cost comparison, breakeven capital table. |
 | `docs/08-testing-and-validation.md` | Unit/integration/prompt-regression tests, shadow mode, paper phase with pre-registered criteria, why classical backtests are invalid for LLMs. |
-| `docs/09-aresium-integration.md` | Read-only REST API contract so Aresium can display positions, theses, citations, holding plans. |
+| `docs/09-aresium-integration.md` | The Ares-Empire decision (separate Arestoteles site + overview card in Aresium), read-only REST API contract, SSO, deploy seam. |
+| `docs/11-web-frontend.md` | The Arestoteles portal: design brief (epic bust-drop intro, on-the-wall charts), broker references, and the copy-paste design prompt. |
 | `docs/10-roadmap.md` | Phases 0–6 and the future-improvements backlog. |
 | `config/universe.yaml` | The tradeable universe, monitored tickers, benchmarks. |
 | `config/config.example.toml` | All tunable numbers (risk limits, budgets, schedule, models). Doubles as the v1 spec. |
