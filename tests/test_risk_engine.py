@@ -63,7 +63,7 @@ def draft(**kw) -> DecisionDraft:
     return DecisionDraft(**base)
 
 
-def market(ticker="NVDA", price=100.0, analysis=100.0, asof=None, adv=50_000_000.0, dte=None):
+def market(ticker="NVDA", price=100.0, analysis=100.0, asof=None, adv=50_000_000.0, dte=10):
     return MarketCtx(
         now=NOW,
         by_ticker={
@@ -242,10 +242,22 @@ def test_missing_liquidity_data_blocks_buys_not_exits():
 # --- timing gates ----------------------------------------------------------------
 
 
-@pytest.mark.parametrize(("dte", "ok_expected"), [(0, False), (2, False), (3, True), (None, True)])
+@pytest.mark.parametrize(("dte", "ok_expected"), [(0, False), (2, False), (3, True)])
 def test_earnings_blackout(dte, ok_expected):
     v = validate(draft(), mkt=market(dte=dte))
     assert v.approved is ok_expected
+
+
+def test_unknown_earnings_date_fails_closed_for_buys_not_exits():
+    v = validate(draft(), mkt=market(dte=None))
+    assert "missing_earnings_calendar" in v.reasons
+    v = validate(
+        draft(action="exit"),
+        skeptic=None,
+        pf=portfolio(positions=[position("NVDA")]),
+        mkt=market(dte=None),
+    )
+    assert v.approved
 
 
 @pytest.mark.parametrize(("days", "ok_expected"), [(0, False), (9, False), (10, True)])

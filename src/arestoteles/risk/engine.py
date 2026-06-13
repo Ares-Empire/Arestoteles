@@ -185,7 +185,10 @@ def validate_decision(
             reasons.append(f"conviction_below_gate:{conviction}<{floor}")
         if md is not None:
             dte = md.trading_days_to_earnings
-            if dte is not None and 0 <= dte <= cfg.earnings_blackout_days:
+            if dte is None:
+                # unknown earnings date = the blackout rule can't be honored -> fail closed
+                reasons.append("missing_earnings_calendar")
+            elif 0 <= dte <= cfg.earnings_blackout_days:
                 reasons.append(f"earnings_blackout:{dte}d")
             if md.adv20_usd is None:
                 reasons.append("missing_liquidity_data")

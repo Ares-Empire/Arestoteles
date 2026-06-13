@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     aresium_api_token: str = ""
     edgar_user_agent: str = ""
+    finnhub_api_key: str = ""  # earnings calendar (blackout rule input)
 
     def require(self, *names: str) -> None:
         """Fail closed if a needed secret is missing (call at point of use)."""
