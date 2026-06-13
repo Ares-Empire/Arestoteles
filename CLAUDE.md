@@ -70,6 +70,22 @@ Today's phase and next steps: see "Status" below — keep it updated.
   walking a chain is the edge but builds a maximally-correlated book, so discovery walks freely
   while sizing caps any single chain-link and requires ≥3 links — the diversification floor that
   holds when the regime dimmer is late. Sub-cluster taxonomy = `value_chain_map.flows_to` groups.
+- 2026-06-13: **Phase 1 code complete** (repo: github.com/carlsenares/Arestoteles). Built: uv
+  scaffold + Docker compose (db/app/bot) + CI; full DB schema/migrations with api_costs from day
+  one; risk engine as pure functions with 70+ unit tests (run on the real example config); RSS
+  registry (56 feed URLs verified live, `scripts/verify_feeds.py` re-runs the check) + EDGAR
+  submissions/FTS pollers (shapes verified live, fixtures recorded); Alpaca read-only wrapper
+  (live test ready, needs keys); Telegram bot (/status /halt /resume); fail-closed runner +
+  morning_sweep/main_run/post_close; systemd timers + Hetzner runbook in deploy/. Smoke-tested
+  end to end locally incl. inside the Docker image (2607 events ingested, dedup to 0 on re-run,
+  /halt verified). Implementation decisions logged in commit messages, notably: explicit
+  `subcluster:` per traded name in universe.yaml (new `analog` bucket for TXN/ADI/ON);
+  min-subcluster floor encoded as distinct ≥ min(n_positions, k); earnings calendar = Finnhub
+  free tier and the engine REJECTS buys when the earnings date is unknown (fail closed);
+  EDGAR via data.sec.gov submissions JSON (successor of the Atom feeds); two YAML bugs fixed
+  (bare `ON` = boolean true; commas in monitored_only signal strings).
+  **Phase 1 exit still needs:** user keys (Alpaca paper, Telegram bot token+chat id, Finnhub;
+  Anthropic only at Phase 2), Hetzner deploy per deploy/README.md, one week unattended.
 
 ## Open decisions (user must answer; do not assume)
 

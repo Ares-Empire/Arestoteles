@@ -46,8 +46,11 @@ theses, citations, and planned holding periods are viewable there.
 ## Status
 
 - **Phase 0 (planning): complete** — 2026-06-13.
-- **Phase 1 (skeleton + free ingestion): not started.** Blocked only on: user creates a free
-  Alpaca paper-trading account + API key. Everything else is decided.
+- **Phase 1 (skeleton + free ingestion): code complete** — 2026-06-13. Free-layer ingestion
+  (RSS + EDGAR) runs and is smoke-tested locally; risk engine fully unit-tested. Remaining for
+  the Phase 1 exit: add keys (Alpaca paper, Telegram, Finnhub) to `.env`, deploy to Hetzner per
+  `deploy/README.md`, let the pollers run unattended for a week.
+- **Phase 2 (brain in shadow): not started.** Needs `ANTHROPIC_API_KEY`.
 
 ## Relationship to Aresium
 
