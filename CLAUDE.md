@@ -86,6 +86,17 @@ Today's phase and next steps: see "Status" below — keep it updated.
   (bare `ON` = boolean true; commas in monitored_only signal strings).
   **Phase 1 exit still needs:** user keys (Alpaca paper, Telegram bot token+chat id, Finnhub;
   Anthropic only at Phase 2), Hetzner deploy per deploy/README.md, one week unattended.
+- 2026-06-13: **Phase 1 keys landed and verified live.** Alpaca paper, Telegram, Finnhub added to
+  `.env` (ANTHROPIC_API_KEY deliberately left empty — Phase 2). Verified each end to end: Alpaca
+  paper round-trip (`pytest -m live`), Telegram getMe + a sent message, Finnhub earnings calendar.
+  Ran the **full local Docker deploy rehearsal** (deploy/README §1–2) on a clean volume: migrate →
+  preflight → morning_sweep (56/56 feeds, 2609 rss + 11 edgar + 3 price-move events) → re-run dedups
+  to 0 → main_run --force (HOLD, no brain) → post_close --force (paper NAV $100k, digest sent) → bot
+  connects (then stopped locally to avoid a dual-poller 409 against the future server). 114 tests
+  green, ruff clean. Added `arestoteles.preflight` (side-effect-free service-reachability check,
+  wired into deploy/README) + test; renamed the bust source asset and committed the avatar.
+  **Phase 1 exit now only needs the user:** Hetzner deploy (needs server access) + ~1 week unattended.
+  **Phase 2 stays gated on ANTHROPIC_API_KEY + an explicit budget go-ahead — not started.**
 
 ## Open decisions (user must answer; do not assume)
 
@@ -94,14 +105,22 @@ Today's phase and next steps: see "Status" below — keep it updated.
 2. **Capital for live phase** and the monthly loss cap that triggers shutdown.
 3. **Aresium read pattern**: REST API (recommended, see `docs/09`) vs. direct DB read.
 
-## Next steps (Phase 1 — ready to start once an Alpaca paper key exists)
+## Next steps
 
-1. Scaffold `pyproject.toml`, `src/arestoteles/` package, Docker compose (app + postgres).
-2. Implement free ingestion: Alpaca prices/clock/calendar, RSS poller, EDGAR filings poller.
-3. Implement DB schema + migrations; `api_costs` accounting from day one.
-4. Telegram bot skeleton: `/status`, `/halt`, `/resume`, daily digest.
-5. Unit tests for the risk engine (pure functions, no I/O) — written *before* the engine is
-   wired to anything.
+Phase 1 is built and locally rehearsed; the remaining Phase 1 work is operational, not code:
+
+1. **Deploy to Hetzner** (needs server access). Per `deploy/README.md`: clone to `/opt/arestoteles`,
+   `cp .env.example .env` + fill the three Phase-1 key sets, `cp config/config.example.toml
+   config/config.toml`, set TZ Europe/Berlin, `docker compose build && up -d db`, migrate, **run
+   `docker compose run --rm app python -m arestoteles.preflight`** (must be all green), `up -d bot`,
+   then enable the three systemd timers.
+2. **Let the free-layer pollers run unattended for ~1 week** with the risk engine green = Phase 1
+   exit (docs/10).
+3. **Phase 2 (AI brain, shadow mode) — only after the user provides `ANTHROPIC_API_KEY` and approves
+   the ~€45–80/mo budget.** Build per docs/04: Haiku triage → Sonnet research (whitelisted
+   `web_search`) → evidence packs with citations → skeptic pass → `DecisionDraft` JSON (must include
+   the `chain` + `priced_in_check` fields) → risk engine → Telegram approval, logging `api_costs` on
+   every call. The attach seam is `runs/main_run.py`; it runs `--no-orders` (shadow) first per docs/08.
 
 ## Verify-before-use
 

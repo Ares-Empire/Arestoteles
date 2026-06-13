@@ -46,11 +46,13 @@ theses, citations, and planned holding periods are viewable there.
 ## Status
 
 - **Phase 0 (planning): complete** — 2026-06-13.
-- **Phase 1 (skeleton + free ingestion): code complete** — 2026-06-13. Free-layer ingestion
-  (RSS + EDGAR) runs and is smoke-tested locally; risk engine fully unit-tested. Remaining for
-  the Phase 1 exit: add keys (Alpaca paper, Telegram, Finnhub) to `.env`, deploy to Hetzner per
-  `deploy/README.md`, let the pollers run unattended for a week.
-- **Phase 2 (brain in shadow): not started.** Needs `ANTHROPIC_API_KEY`.
+- **Phase 1 (skeleton + free ingestion): code complete and key-verified** — 2026-06-13. Alpaca
+  paper, Telegram, and Finnhub keys are live-verified, and the full pipeline has been rehearsed
+  locally via Docker exactly as it will run on Hetzner (migrate → `preflight` → morning_sweep →
+  main_run → post_close → bot). Remaining for the Phase 1 exit: deploy to Hetzner per
+  `deploy/README.md` and let the pollers run unattended for a week.
+- **Phase 2 (brain in shadow): not started.** Gated on `ANTHROPIC_API_KEY` (deliberately empty
+  until then) and an explicit go-ahead on the ~€45–80/mo API budget.
 
 ## Relationship to Aresium
 
