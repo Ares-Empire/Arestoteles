@@ -135,10 +135,15 @@ Today's phase and next steps: see "Status" below — keep it updated.
   `web/app/live.js` + a `WatchList` panel render it as **"live, not held"** inside the empty side-card so
   the portfolio stays honestly empty. `arestoteles-quotes.timer` refreshes every 15 min (enabled, test-fired
   OK). All 12 jsx/js transform-checked with Babel 7.29.0; full ruff gate green; `web/live.json` gitignored.
-  **STILL NEEDED (user/DNS):** arestoteles.de does NOT resolve yet (user re-added A/AAAA 2026-06-14 →
-  awaiting propagation). Once it resolves: run `deploy/enable-tls-arestoteles.sh` (issues LE cert via the
-  insureai_certbot webroot + swaps the vhost to HTTPS). Until then the site is reachable only by IP+Host.
-  Mobile (`mobile.jsx`) still shows the design's bare empty state — watchlist injection is desktop-only.
+  **LIVE over HTTPS at https://www.arestoteles.de** — `www` DNS propagated mid-session; issued a Let's
+  Encrypt cert (www only, expires 2026-09-12) via the insureai_certbot webroot and switched the vhost to
+  TLS (HTTP→https://www redirect; insureares+aresium reverified healthy). **Apex `arestoteles.de` does NOT
+  resolve yet** (user re-added A/AAAA 2026-06-14; only www had propagated) — HTTP/HTTPS on the apex will work
+  once it does, but the cert must be reissued with `--expand -d www.arestoteles.de -d arestoteles.de` and
+  the apex added to the 443 `server_name` (steps in the conf header; `deploy/enable-tls-arestoteles.sh`
+  covers the full both-names path). Mobile (`mobile.jsx`) still shows the design's bare empty state —
+  watchlist injection is desktop-only. **Login is still out of scope** (public read-only site; no private
+  data shown — empty book + public market quotes — so the planned scrypt+HMAC login can come later).
 
 ## Open decisions (user must answer; do not assume)
 
