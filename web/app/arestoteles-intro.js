@@ -72,7 +72,7 @@
     return d;
   }
 
-  function run(cfg, onDone, container) {
+  function run(cfg, onDone, container, onReveal) {
     const fixed = !container;
     const root = container || document.body;
 
@@ -350,6 +350,9 @@
     const cleanup = () => { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); if (onDone) onDone(); };
     setTimeout(() => {
       forceFinal();
+      // reveal the live app *under* the still-opaque overlay, so the crossfade dissolves
+      // the intro directly into the UI (no flash, no pop).
+      if (onReveal) { try { onReveal(); } catch (_) {} }
       if (fixed) {
         overlay.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 520, easing: "ease", fill: "both" })
           .finished.then(cleanup).catch(cleanup);
@@ -365,10 +368,10 @@
     play(opts) {
       opts = opts || {};
       const cfg = VARIANTS[opts.variant] || VARIANTS.impact;
-      if (opts.reducedOk && prefersReduced) { if (opts.onDone) opts.onDone(); return; }
+      if (opts.reducedOk && prefersReduced) { if (opts.onReveal) opts.onReveal(); if (opts.onDone) opts.onDone(); return; }
       // preload the bust so the very first frame already shows it (never the placeholder card)
       let started = false;
-      const go = () => { if (started) return; started = true; run(cfg, opts.onDone, opts.container || null); };
+      const go = () => { if (started) return; started = true; run(cfg, opts.onDone, opts.container || null, opts.onReveal); };
       const im = new Image();
       im.onload = go; im.onerror = go; im.src = BUST_SRC;
       if (im.complete) go(); else setTimeout(go, 360);

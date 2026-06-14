@@ -23,14 +23,18 @@ function TopBar({ crumb, onHome, onMode, mode }) {
         </nav>
       </div>
       <div className="actions">
-        <a className="hub-link" href="#ares-hub" onClick={(e) => e.preventDefault()} title="Back to the Ares hub">
-          <span className="hub-dot" /> Ares hub
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M6 3 L11 8 L6 13" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        {/* Ares Empire hub link — the empire home / future SSO hub. Logo lands later
+            (see ares-empire/); until then it's the wordmark. No status dot / chevron. */}
+        <a className="hub-link" href="#ares-empire" onClick={(e) => e.preventDefault()} title="The Ares Empire">
+          Ares Empire
         </a>
         <button className="btn-mode" onClick={onMode} aria-label="Toggle Ares mode" title={mode === "red" ? "Exit Ares mode" : "Enter Ares mode"}>
           {mode === "red"
             ? <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M11.5 4.5 L4.5 11.5 M4.5 4.5 L11.5 11.5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" /></svg>
             : <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M20 14.5 A8 8 0 1 1 9.5 4 A6.2 6.2 0 0 0 20 14.5 Z" fill="currentColor" /></svg>}
+        </button>
+        <button className="btn-mode" onClick={() => { window.location.href = "/logout"; }} aria-label="Log out" title="Log out">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M14 4 H7 a2 2 0 0 0 -2 2 v12 a2 2 0 0 0 2 2 h7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /><path d="M17 8 l4 4 -4 4 M21 12 H10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </button>
       </div>
     </header>
@@ -83,7 +87,7 @@ function Legend({ series, hidden, onToggle }) {
 }
 
 // ---- overview screen ----
-function Overview({ onOpen, ver }) {
+function Overview({ onOpen, onWatch, ver }) {
   const pf = useM(() => window.AresData.portfolio(), [ver]);
   const positions = useM(() => window.AresData.positions(), [ver]);
   const perf = useM(() => window.AresData.performance(), [ver]);
@@ -124,7 +128,7 @@ function Overview({ onOpen, ver }) {
             {!empty && <span className="side-count">{positions.length}</span>}
           </div>
           <div className="side-body">
-            <window.PositionsList positions={positions} onOpen={onOpen} watch={empty ? live : null} />
+            <window.PositionsList positions={positions} onOpen={onOpen} onWatch={onWatch} watch={empty ? live : null} />
           </div>
           {!empty && (
             <div className="side-foot">
@@ -193,6 +197,75 @@ function StockDetail({ ticker, ver }) {
   );
 }
 
+// ---- watchlist detail (a live, NOT-held name) ----
+// Driven entirely by the live.json watchlist feed (window.AresLive): real price + the
+// trailing ~30 daily closes. No cost basis / thesis — this is a market quote, not a holding.
+function WatchDetail({ ticker, ver }) {
+  const live = window.AresLive;
+  const q = useM(() => (live.quotes || []).find((x) => x.ticker === ticker), [ticker, ver, live]);
+  if (!q) return null;
+  const up = (q.day || 0) >= 0;
+  const spark = q.spark && q.spark.length > 1 ? q.spark : [q.price, q.price];
+  const labels = spark.map((_, i) => (i === 0 ? "~30 sessions" : i === spark.length - 1 ? "now" : ""));
+  const first = spark[0], last = spark[spark.length - 1];
+  const sinceAbs = last - first;
+  const sincePct = first ? (sinceAbs / first) * 100 : 0;
+  const sinceUp = sinceAbs >= 0;
+
+  return (
+    <React.Fragment>
+      <div className="summary summary-stock">
+        <div className="summary-main">
+          <div className="summary-kicker">{q.name} · live watchlist · not held</div>
+          <div className="summary-nav">{window.fmtPrice(q.price)}</div>
+        </div>
+        <div className="summary-deltas">
+          <div className="delta">
+            <span className="delta-lbl">Today</span>
+            <span className={"delta-val " + deltaClass(q.day || 0)}>{window.fmtPct(q.day || 0)}</span>
+          </div>
+          <div className="delta">
+            <span className="delta-lbl">~30 sessions</span>
+            <span className={"delta-val " + deltaClass(sinceAbs)}>{window.fmtSigned(sinceAbs)} <span className="delta-pct">{window.fmtPct(sincePct)}</span></span>
+          </div>
+        </div>
+        <MetaChips pf={{ mode: "paper", asOf: live.asOfLabel || "—", marketOpen: !!live.marketOpen }} />
+      </div>
+      <main className="grid grid-stock">
+        <section className="chart-card">
+          <div className="chart-card-head">
+            <div className="chart-titles">
+              <h1 className="chart-title">{ticker} <span className="chart-title-sub">price</span></h1>
+              <p className="chart-sub">Trailing daily closes · live market data, watchlist only</p>
+            </div>
+          </div>
+          <div className="chart-host">
+            <window.AnimatedChart
+              key={"watch-" + ticker + "-" + ver}
+              animKey={"watch-" + ticker}
+              series={[{ key: "px", label: ticker, color: sinceUp ? UP : DOWN, fill: true, points: spark }]}
+              xLabels={labels} xLabel="" yLabel="USD"
+              priceMode={true} clickable={false} />
+          </div>
+        </section>
+        <aside className="side-card thesis-card">
+          <div className="thesis">
+            <div className="thesis-head">
+              <span className="thesis-kicker">Watchlist</span>
+              <span className="conv-badge conv-med">Not held</span>
+            </div>
+            <div className="thesis-pending">
+              <div className="thesis-pending-ic" dangerouslySetInnerHTML={{ __html: window.lucideSvg("Activity") }} />
+              <div className="thesis-pending-h">Live, not held</div>
+              <div className="thesis-pending-p">{q.name} ({ticker}) is on the sector watchlist — real quotes from the live market feed, <b>not</b> a position in the paper book. A thesis appears here only once the brain opens a position. <span className="thesis-phase">Phase 2+</span></div>
+            </div>
+          </div>
+        </aside>
+      </main>
+    </React.Fragment>
+  );
+}
+
 function App() {
   const [mode, setMode] = useS("dark");        // dark | red
   const [nav, setNav] = useS({ screen: "overview" });
@@ -227,15 +300,18 @@ function App() {
   const toggleMode = useC(() => { (mode === "red" ? exitRed : enterRed)(); }, [mode, enterRed, exitRed]);
 
   const openStock = useC((t) => setNav({ screen: "stock", ticker: t }), []);
+  const openWatch = useC((t) => setNav({ screen: "watch", ticker: t }), []);
   const home = useC(() => setNav({ screen: "overview" }), []);
 
   return (
     <div className="app">
       <div className="mode-fade" ref={fadeRef} aria-hidden="true" />
-      <TopBar crumb={nav.screen === "stock" ? nav.ticker : null} onHome={home} onMode={toggleMode} mode={mode} />
+      <TopBar crumb={nav.screen === "overview" ? null : nav.ticker} onHome={home} onMode={toggleMode} mode={mode} />
       {nav.screen === "overview"
-        ? <Overview onOpen={openStock} ver={ver} />
-        : <StockDetail ticker={nav.ticker} ver={ver} />}
+        ? <Overview onOpen={openStock} onWatch={openWatch} ver={ver} />
+        : nav.screen === "watch"
+          ? <WatchDetail ticker={nav.ticker} ver={ver} />
+          : <StockDetail ticker={nav.ticker} ver={ver} />}
       <div className="ares-band" aria-hidden="true"><window.Wordmark /></div>
     </div>
   );

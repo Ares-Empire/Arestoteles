@@ -187,7 +187,7 @@ def login_page(error: str = "") -> bytes:
       <input type="password" name="password" placeholder="Access key" aria-label="Access key" autofocus required />
       <button type="submit">Enter</button>
     </form>
-    <p class="foot">AI-run semiconductor portfolio · paper</p>
+    <p class="foot">Paper portfolio</p>
   </main>
 </body>
 </html>"""

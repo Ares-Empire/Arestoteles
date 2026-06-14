@@ -39,7 +39,7 @@
   }
 
   // ---- live watchlist (real quotes, NOT held) — shown in the empty side-card ----
-  function WatchList({ quotes, asOf }) {
+  function WatchList({ quotes, asOf, onOpen }) {
     return (
       <div className="watch">
         <div className="watch-note">
@@ -58,7 +58,7 @@
             const up = (q.day || 0) >= 0;
             const spark = q.spark && q.spark.length > 1 ? q.spark : [q.price, q.price];
             return (
-              <div key={q.ticker} className="pos-row watch-row">
+              <button key={q.ticker} className="pos-row watch-row" onClick={() => onOpen && onOpen(q.ticker)}>
                 <div className="pos-main">
                   <div className="pos-id">
                     <span className="pos-ticker">{q.ticker}</span>
@@ -70,7 +70,7 @@
                   <span className="pos-price">{window.fmtPrice(q.price)}</span>
                   <span className={"pos-day " + (up ? "up" : "down")}>{window.fmtPct(q.day || 0)}</span>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -79,11 +79,11 @@
   }
 
   // ---- positions list (glass side-card body) ----
-  function PositionsList({ positions, onOpen, watch }) {
+  function PositionsList({ positions, onOpen, onWatch, watch }) {
     if (!positions.length) {
       // if a live watchlist feed is present, show real quotes instead of the bare empty card
       if (watch && watch.quotes && watch.quotes.length) {
-        return <WatchList quotes={watch.quotes} asOf={watch.asOfLabel} />;
+        return <WatchList quotes={watch.quotes} asOf={watch.asOfLabel} onOpen={onWatch} />;
       }
       return (
         <div className="pos-empty">

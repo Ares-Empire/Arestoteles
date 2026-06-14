@@ -154,6 +154,26 @@ Today's phase and next steps: see "Status" below — keep it updated.
   only when both are set, else serves open with a loud warning. Verified live over HTTPS: unauthed→302
   /login, wrong pw→401, correct pw→302+cookie, authed→200, tampered cookie→rejected. ruff config gained a
   per-file E501 ignore for the inline-HTML login page. Password is the user's; not in the repo.
+- 2026-06-14: **Front-end polish pass + Ares Empire hub seeded.** (1) **Favicon** = the Aristotle bust
+  (`<link rel=icon>` → `brand/aristotle-bust.png`; reachable unauthed via the `/brand/` open prefix).
+  (2) **Dropped the "AI-run semiconductor portfolio" tagline** everywhere user-facing: `index.html`
+  + `Arestoteles.html` titles → just "Arestoteles", login-page foot → "Paper portfolio"; **also in
+  Aresium** (`web/public/index.html` title → just "Aresium"). (3) **Logout button** added to the
+  Arestoteles header (ported Aresium's `/logout` icon-button, styled as `.btn-mode`). (4) **Intro
+  no-flash**: boot.jsx now decides *synchronously* (desktop only) whether the intro plays and adds
+  `.ares-booting` (inline `<style>` hides `#root`) before first paint; the intro reveals the app via a
+  new `onReveal` hook fired right as it starts its crossfade, so the bust-drop dissolves straight into
+  the UI — the portfolio never flashes first. (5) **Clickable live watchlist**: watchlist rows are now
+  buttons → new desktop `WatchDetail` view (price + trailing ~30 daily closes chart from `live.json`,
+  marked "live, not held") so any sector name (NVDA…) is browsable; honest empty book unchanged.
+  (6) **Hub button**: removed the red status-dot + "›" chevron, relabelled **"Ares Empire"**. Created
+  **`/root/ares-empire/`** (sibling to aresium/arestoteles) = the empire hub/SSO home: `README.md`
+  (name decision **"Ares Empire"** over bare "Ares"; service-overview plan) + `brand/LOGO_PROMPT.md`
+  (logo direction = **white-marble Ares bust, Corinthian helmet pushed back, bearded, hint of armor** —
+  artwork deferred to Claude Design; drop result at `brand/ares-bust.png`, then swap the wordmark button
+  for mark+wordmark). All 5 edited jsx/js babel-parse clean; `server.py` py_compile clean; web container
+  restarted, changes verified live over the gateway. Static `web/` is bind-mounted ro so it's live on
+  refresh. **Note:** watchlist click-through is desktop-only (mobile.jsx still bare empty state).
 
 ## Open decisions (user must answer; do not assume)
 

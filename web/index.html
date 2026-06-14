@@ -3,7 +3,13 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Arestoteles — AI-run semiconductor portfolio</title>
+<title>Arestoteles</title>
+<link rel="icon" type="image/png" href="brand/aristotle-bust.png" />
+<link rel="apple-touch-icon" href="brand/aristotle-bust.png" />
+<!-- intro anti-flash: while the first-load intro is pending (desktop only), keep the
+     app hidden behind the bust-drop so the portfolio never flashes before the intro.
+     boot.jsx adds .ares-booting synchronously and removes it as the intro crossfades. -->
+<style>html.ares-booting{background:#17171d}html.ares-booting #root{visibility:hidden}</style>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
