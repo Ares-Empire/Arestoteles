@@ -7,13 +7,14 @@ upper-left (matches the Aresium dark aesthetic).
 Run:    python scripts/make_bust.py [source.png]
 Output: assets/arestoteles_bust.png  (1024x1024 square -> Telegram avatar)
 """
+
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageFilter, ImageOps
+from PIL import Image, ImageFilter
 from rembg import remove
 
 ASSETS = Path(__file__).resolve().parent.parent / "assets"
@@ -25,7 +26,7 @@ S = 1024
 def cutout(src: Path) -> Image.Image:
     """Background-removed RGBA bust, tightly cropped to its alpha bbox."""
     img = Image.open(src).convert("RGBA")
-    cut = remove(img, post_process_mask=True)          # U2Net segmentation
+    cut = remove(img, post_process_mask=True)  # U2Net segmentation
     a = np.asarray(cut.split()[-1])
     ys, xs = np.where(a > 16)
     box = (xs.min(), ys.min(), xs.max() + 1, ys.max() + 1)
@@ -36,11 +37,11 @@ def tune_marble(rgba: Image.Image) -> Image.Image:
     """Light-grey/white marble tone + soft upper-left 3D light, alpha kept."""
     rgb = rgba.convert("RGB")
     r, g, b = (np.asarray(rgb, np.float32)[..., i] for i in range(3))
-    lum = 0.299 * r + 0.587 * g + 0.114 * b            # desaturate -> stone grey
+    lum = 0.299 * r + 0.587 * g + 0.114 * b  # desaturate -> stone grey
 
     # gentle contrast/level so it sits as light grey -> white, not washed out
     lum = np.clip((lum - 18) * 1.18 + 12, 0, 255)
-    lum = 255 * (lum / 255) ** 0.86                    # lift midtones toward white
+    lum = 255 * (lum / 255) ** 0.86  # lift midtones toward white
 
     # directional 3D light: brighten upper-left, deepen lower-right
     h, w = lum.shape
