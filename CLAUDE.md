@@ -142,8 +142,18 @@ Today's phase and next steps: see "Status" below — keep it updated.
   once it does, but the cert must be reissued with `--expand -d www.arestoteles.de -d arestoteles.de` and
   the apex added to the 443 `server_name` (steps in the conf header; `deploy/enable-tls-arestoteles.sh`
   covers the full both-names path). Mobile (`mobile.jsx`) still shows the design's bare empty state —
-  watchlist injection is desktop-only. **Login is still out of scope** (public read-only site; no private
-  data shown — empty book + public market quotes — so the planned scrypt+HMAC login can come later).
+  watchlist injection is desktop-only.
+- 2026-06-14: **Custom login gate added** (the docs/09 "own custom login now"). Ported Aresium's
+  scrypt + HMAC-signed-cookie scheme to Python, stdlib-only, in `webauth/server.py` — which now IS the
+  `web` container (python:3.12-alpine replacing the static nginx one): it serves `web/` and gates every
+  path behind a single-password login (`arestoteles_session` cookie, 30-day, HttpOnly/Secure/SameSite=Lax),
+  with an on-brand login page (marble bust, ARESTOTELES wordmark, glass card on the black wall). Open
+  paths: `/login`, `/logout`, `/brand/*` (the login visual), `/favicon`. `gen_password.py` mints the hash;
+  secrets live in `.env` as `AUTH_PASSWORD_HASH` (scrypt, **`:`-delimited not `$`** — docker compose
+  env_file interpolates `$`) + `AUTH_SESSION_SECRET` (gitignored, server-only). Fail-safe: gate is active
+  only when both are set, else serves open with a loud warning. Verified live over HTTPS: unauthed→302
+  /login, wrong pw→401, correct pw→302+cookie, authed→200, tampered cookie→rejected. ruff config gained a
+  per-file E501 ignore for the inline-HTML login page. Password is the user's; not in the repo.
 
 ## Open decisions (user must answer; do not assume)
 

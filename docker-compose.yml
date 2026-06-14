@@ -36,18 +36,23 @@ services:
       db:
         condition: service_healthy
 
-  # Static web frontend (arestoteles.de). Serves web/ — the Claude-Design portal
-  # (docs/11) plus the live watchlist feed (web/live.json, refreshed by a timer).
-  # Bound to the insureai_network gateway IP so the shared insureai_nginx reverse
-  # proxy can reach it (same pattern aresium uses on 172.18.0.1:5173). Not on a
-  # public interface itself; TLS + the public vhost live in insureai_nginx.
+  # Web frontend (arestoteles.de). Serves web/ — the Claude-Design portal (docs/11)
+  # plus the live watchlist feed (web/live.json) — behind a single-password login
+  # gate (webauth/server.py: scrypt + HMAC-signed cookie, Aresium's pattern in
+  # Python, stdlib-only). Bound to the insureai_network gateway IP so the shared
+  # insureai_nginx reverse proxy can reach it (same pattern aresium uses on
+  # 172.18.0.1:5173). TLS + the public vhost live in insureai_nginx.
+  # Login secrets (AUTH_PASSWORD_HASH / AUTH_SESSION_SECRET) come from .env.
   web:
-    image: nginx:1.27-alpine
+    image: python:3.12-alpine
     restart: unless-stopped
+    env_file: .env
+    command: ["python", "/srv/server.py"]
     volumes:
-      - ./web:/usr/share/nginx/html:ro
+      - ./web:/srv/web:ro
+      - ./webauth/server.py:/srv/server.py:ro
     ports:
-      - "172.18.0.1:5180:80"
+      - "172.18.0.1:5180:8080"
 
   # Phase 4 adds: api (FastAPI, read-only Aresium contract, docs/09)
 
