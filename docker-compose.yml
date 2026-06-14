@@ -36,6 +36,19 @@ services:
       db:
         condition: service_healthy
 
+  # Static web frontend (arestoteles.de). Serves web/ — the Claude-Design portal
+  # (docs/11) plus the live watchlist feed (web/live.json, refreshed by a timer).
+  # Bound to the insureai_network gateway IP so the shared insureai_nginx reverse
+  # proxy can reach it (same pattern aresium uses on 172.18.0.1:5173). Not on a
+  # public interface itself; TLS + the public vhost live in insureai_nginx.
+  web:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    volumes:
+      - ./web:/usr/share/nginx/html:ro
+    ports:
+      - "172.18.0.1:5180:80"
+
   # Phase 4 adds: api (FastAPI, read-only Aresium contract, docs/09)
 
 volumes:

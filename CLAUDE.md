@@ -122,6 +122,23 @@ Today's phase and next steps: see "Status" below — keep it updated.
   Robinhood/Bloomberg/Linear; attach Aresium's files) + a copy-paste design prompt; the intro must be
   built as working motion, not a static frame. **Caveat:** the API doesn't exist yet (pulls Phase-4
   forward) and there are zero positions until Phase 2 — build the shell now, fills when the brain trades.
+- 2026-06-14: **Front-end shipped + deployed (HTTP) and CI fixed.** (1) **CI**: was red on every push
+  since `make_bust.py` landed — pinned ruff 0.15.17 flags an unused `PIL.ImageOps` import + formatting.
+  Fixed and on `main`. (2) **Site**: implemented the Claude-Design handoff (`Arestoteles.html`, a zero-build
+  CDN-React + Babel prototype: intro bust-drop onto a `dent2.png` crack-crater, red-mode mirror-shatter,
+  empty-by-default honest portfolio, per-stock + thesis views) verbatim into `web/`, served by a new
+  `web` nginx:alpine container (compose) bound to `172.18.0.1:5180` (same gateway pattern as aresium).
+  Added an additive `arestoteles.conf` vhost to insureai_nginx (validated, reloaded; insureares+aresium
+  unaffected). Confirmed serving for arestoteles.de + www through the gateway via Host header. (3) **Live
+  stats**: `scripts/refresh_quotes.py` (read-only Alpaca IEX snapshots+bars, fail-closed) writes
+  `web/live.json` for a 14-name semis/AI watchlist (NVDA…ARM + AAPL/MSFT/GOOGL/TSLA/AMZN); additive
+  `web/app/live.js` + a `WatchList` panel render it as **"live, not held"** inside the empty side-card so
+  the portfolio stays honestly empty. `arestoteles-quotes.timer` refreshes every 15 min (enabled, test-fired
+  OK). All 12 jsx/js transform-checked with Babel 7.29.0; full ruff gate green; `web/live.json` gitignored.
+  **STILL NEEDED (user/DNS):** arestoteles.de does NOT resolve yet (user re-added A/AAAA 2026-06-14 →
+  awaiting propagation). Once it resolves: run `deploy/enable-tls-arestoteles.sh` (issues LE cert via the
+  insureai_certbot webroot + swaps the vhost to HTTPS). Until then the site is reachable only by IP+Host.
+  Mobile (`mobile.jsx`) still shows the design's bare empty state — watchlist injection is desktop-only.
 
 ## Open decisions (user must answer; do not assume)
 

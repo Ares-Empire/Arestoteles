@@ -1,0 +1,19 @@
+[Unit]
+Description=Arestoteles live watchlist refresh (web/live.json from Alpaca, read-only)
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/arestoteles
+# Read-only Alpaca market data -> web/live.json, served by the arestoteles `web`
+# container. Run as a standalone container (not `docker compose run`) so we can
+# mount the script + web dir without rebuilding the app image; the arestoteles
+# package is already installed in arestoteles-app:latest. Fails closed: on any
+# Alpaca error the existing live.json is left untouched and this exits non-zero.
+ExecStart=/usr/bin/docker run --rm \
+  --network arestoteles_default \
+  --env-file /opt/arestoteles/.env \
+  -v /opt/arestoteles/web:/app/web \
+  -v /opt/arestoteles/scripts/refresh_quotes.py:/app/refresh_quotes.py:ro \
+  arestoteles-app:latest python /app/refresh_quotes.py

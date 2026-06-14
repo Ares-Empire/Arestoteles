@@ -1,0 +1,13 @@
+[Unit]
+Description=Refresh the Arestoteles live watchlist every 15 minutes
+
+[Timer]
+# Every 15 min. Cheap (2 read-only Alpaca calls for ~14 tickers); when the US
+# market is closed it just rewrites the same prices, which is harmless. Timezone
+# left to the host default — the feed carries its own UTC asOf timestamp.
+OnCalendar=*:0/15
+Persistent=true
+RandomizedDelaySec=30
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Arestoteles — Intro Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="app/styles.css" />
+<style>
+  body { overflow-y: auto; }
+  .lab { max-width: 1280px; margin: 0 auto; padding: 36px 28px 64px; position: relative; z-index: 1; }
+  .lab-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; padding-bottom: 22px; margin-bottom: 26px; border-bottom: 1px solid var(--line-soft); }
+  .lab-title { font-size: 26px; font-weight: 700; letter-spacing: -0.04em; }
+  .lab-kicker { font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 8px; }
+  .lab-sub { font-size: 13.5px; color: var(--ink-2); font-weight: 500; max-width: 560px; line-height: 1.55; margin-top: 10px; text-wrap: pretty; }
+  .lab-actions { display: flex; gap: 10px; }
+  .lab-btn { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px; border: 1px solid var(--line-soft); border-radius: 12px; background: var(--card); color: var(--ink-2); font-weight: 600; font-size: 13.5px; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); transition: all .2s; }
+  .lab-btn:hover { color: var(--ink); border-color: var(--ink-3); background: var(--card-2); }
+  .lab-btn.solid { color: var(--ink); border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.06); }
+
+  .lab-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  @media (max-width: 860px) { .lab-grid { grid-template-columns: 1fr; max-width: 460px; margin: 0 auto; } }
+  .lab-card { display: flex; flex-direction: column; gap: 0; }
+  .lab-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 0 2px 12px; }
+  .lab-name { font-size: 17px; font-weight: 700; letter-spacing: -0.03em; }
+  .lab-name .n { font-family: var(--mono); color: var(--ink-3); font-size: 13px; margin-right: 8px; }
+  .lab-desc { font-size: 12.5px; color: var(--ink-3); font-weight: 500; line-height: 1.5; padding: 12px 4px 0; min-height: 52px; text-wrap: pretty; }
+  .lab-stage {
+    position: relative; overflow: hidden; border-radius: 14px; aspect-ratio: 4 / 5;
+    border: 1px solid var(--line-soft); background: #050507;
+    box-shadow: var(--shadow), inset 0 1px 0 var(--edge);
+  }
+  .lab-replay {
+    position: absolute; right: 12px; bottom: 12px; z-index: 20;
+    display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 13px;
+    border: 1px solid var(--line-soft); border-radius: 10px; background: rgba(10,10,12,0.72);
+    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    color: var(--ink); font-weight: 600; font-size: 12.5px; transition: all .18s;
+  }
+  .lab-replay:hover { border-color: var(--ink-3); background: rgba(20,20,24,0.85); }
+  .lab-note { margin-top: 30px; font-size: 12.5px; color: var(--ink-3); line-height: 1.6; max-width: 720px; text-wrap: pretty; }
+  .lab-note code { font-family: var(--mono); color: var(--ink-2); background: var(--hover); padding: 1px 6px; border-radius: 5px; }
+</style>
+</head>
+<body>
+<div class="lab">
+  <div class="lab-head">
+    <div>
+      <div class="lab-kicker">Arestoteles · Brand motion</div>
+      <div class="lab-title">Intro Lab</div>
+      <div class="lab-sub">Three load-intro treatments to choose from. The Aristotle bust falls in depth onto the black wall; impact, settle, then the <b>ARESTOTELES</b> wordmark resolves into the bottom band. Pick one — it becomes the once-per-session intro on the live portal.</div>
+    </div>
+    <div class="lab-actions">
+      <button class="lab-btn solid" id="playAll">▶ Replay all</button>
+    </div>
+  </div>
+
+  <div class="lab-grid" id="grid"></div>
+
+  <div class="lab-note">
+    Self-contained module: <code>window.ArestotelesIntro.play({ variant, container })</code>. Honors <code>prefers-reduced-motion</code> (skips to the UI). The real <code>brand/aristotle-bust.png</code> auto-swaps into the marble placeholder the moment it exists — in the bust mark, this intro, and on mobile. Set the live default via the <b>Tweaks → Intro</b> control on the portal.
+  </div>
+</div>
+
+<script src="app/arestoteles-intro.js"></script>
+<script>
+  const VARIANTS = [
+    { id: "impact",   name: "Impact",   tag: "spec",       desc: "The full cinematic spec — bust falls, screen-shake on impact, a crater forms, white cracks draw outward with a dust puff, then the wordmark vibrates into the band." },
+    { id: "descent",  name: "Descent",  tag: "restrained", desc: "Polished and calm — a slow z-recession, a soft marble ground-glow instead of a crater, no shake. The wordmark fades and rises gently. Premium, understated." },
+    { id: "fracture", name: "Fracture", tag: "heavier",    desc: "Maximal — a hard slam, a white flash, a dense crack network spidering across the wall, heavier dust, and the wordmark snaps in letter-by-letter." },
+  ];
+
+  const grid = document.getElementById("grid");
+  const stages = {};
+  VARIANTS.forEach((v) => {
+    const card = document.createElement("div");
+    card.className = "lab-card";
+    card.innerHTML = `
+      <div class="lab-card-head">
+        <div class="lab-name"><span class="n">${VARIANTS.indexOf(v) + 1 < 10 ? "0" : ""}${VARIANTS.indexOf(v) + 1}</span>${v.name}</div>
+      </div>
+      <div class="lab-stage"><button class="lab-replay">↻ Replay</button></div>
+      <div class="lab-desc">${v.desc}</div>`;
+    grid.appendChild(card);
+    const stage = card.querySelector(".lab-stage");
+    stages[v.id] = stage;
+    card.querySelector(".lab-replay").addEventListener("click", () => playOne(v.id));
+  });
+
+  function playOne(id) {
+    const stage = stages[id];
+    // keep the replay button, clear any prior overlay
+    stage.querySelectorAll(".intro-overlay").forEach((n) => n.remove());
+    window.ArestotelesIntro.play({ variant: id, container: stage });
+  }
+
+  function playAll() { VARIANTS.forEach((v, i) => setTimeout(() => playOne(v.id), i * 350)); }
+
+  document.getElementById("playAll").addEventListener("click", playAll);
+  // autoplay on load (staggered)
+  window.addEventListener("load", () => setTimeout(playAll, 350));
+</script>
+</body>
+</html>

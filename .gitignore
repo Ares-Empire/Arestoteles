@@ -14,3 +14,7 @@ data/
 logs/
 *.sqlite
 *.log
+
+# generated live watchlist feed (written in place by the quotes timer)
+web/live.json
+web/live.json.tmp
