@@ -50,7 +50,7 @@ SCRYPT_N, SCRYPT_R, SCRYPT_P, SCRYPT_DKLEN, SCRYPT_MAXMEM = 16384, 8, 1, 32, 64 
 # paths reachable without a session: the login flow + the brand image it shows
 # Reachable without a session: the login flow and the one image the login page shows.
 # Exact paths only. Prefix matching ("/brand/") let "/brand/../index.html" past the login (2026-10-22).
-OPEN_PATHS = frozenset({"/login", "/logout", "/favicon.ico", "/brand/aristotle-bust.png"})
+OPEN_PATHS = frozenset({"/login", "/logout", "/favicon.ico", "/brand/aristotle-bust-login.webp"})
 
 
 def auth_enabled() -> bool:
@@ -205,7 +205,7 @@ def login_page(error: str = "") -> bytes:
 </head>
 <body>
   <main class="card">
-    <img class="bust" src="/brand/aristotle-bust.png" alt="Arestoteles" />
+    <img class="bust" src="/brand/aristotle-bust-login.webp" alt="Arestoteles" />
     <p class="word">ARESTOTELES</p>
     <p class="sub">Enter the access key to continue</p>
     {err}
@@ -221,6 +221,9 @@ def login_page(error: str = "") -> bytes:
 
 
 class Handler(SimpleHTTPRequestHandler):
+    # the slim container has no system MIME table, so name the types the site uses
+    extensions_map = {**SimpleHTTPRequestHandler.extensions_map, ".webp": "image/webp", ".svg": "image/svg+xml"}
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=WEB_ROOT, **kwargs)
 
