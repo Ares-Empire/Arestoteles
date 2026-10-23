@@ -11,7 +11,7 @@ set -euo pipefail
 
 DOMAIN=arestoteles.de
 WWW=www.arestoteles.de
-EMAIL=you@example.com
+EMAIL="${CERTBOT_EMAIL:?set CERTBOT_EMAIL to the certificate contact email}"  # e.g. CERTBOT_EMAIL=you@example.com bash enable-tls-arestoteles.sh
 CONF=/root/insureai/InsureAI/backend/nginx/conf.d/arestoteles.conf
 CERTBOT_CONF=/root/insureai/InsureAI/backend/certbot/conf
 CERTBOT_WWW=/root/insureai/InsureAI/backend/certbot/www
