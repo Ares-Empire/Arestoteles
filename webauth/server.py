@@ -28,6 +28,7 @@ from base64 import urlsafe_b64decode, urlsafe_b64encode
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from time import time
+from typing import ClassVar
 from urllib.parse import parse_qs, urlparse
 
 WEB_ROOT = os.environ.get("WEB_ROOT", "/srv/web")
@@ -222,7 +223,7 @@ def login_page(error: str = "") -> bytes:
 
 class Handler(SimpleHTTPRequestHandler):
     # the slim container has no system MIME table, so name the types the site uses
-    extensions_map = {**SimpleHTTPRequestHandler.extensions_map, ".webp": "image/webp", ".svg": "image/svg+xml"}
+    extensions_map: ClassVar[dict[str, str]] = {**SimpleHTTPRequestHandler.extensions_map, ".webp": "image/webp", ".svg": "image/svg+xml"}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=WEB_ROOT, **kwargs)
