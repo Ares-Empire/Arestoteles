@@ -3,9 +3,8 @@
    DARK → RED entry. The Aristotle bust drops onto the LIVE portfolio (the page background
    stays put — NOT the black-wall intro). On impact, jagged cracks GROW out from the impact
    point toward the screen edges over a couple of seconds — main fissures reaching outward,
-   smaller branch cracks splintering off them. The cracks are real WINDOWS: a mask cuts slits
-   in the dark layer so the red portfolio (already swapped in underneath) shows through them.
-   After the cracks settle for a beat, the dark surface breaks into pieces that fall away in a
+   smaller branch cracks splintering off them. The cracks glow red, as if the red portfolio
+   (already swapped in underneath) were shining through them. After the cracks settle for a beat, the dark surface breaks into pieces that fall away in a
    few staggered waves, revealing the red portfolio.
 
    AresShatter.toRed({ onSwap, onDone })
@@ -16,7 +15,7 @@
 (function () {
   "use strict";
 
-  const BUST_SRC = "brand/aristotle-bust.png";
+  const BUST_SRC = "/brand/aristotle-bust.webp";
   const NS = "http://www.w3.org/2000/svg";
   let uid = 0;
   let prefersReduced = false;
@@ -87,35 +86,52 @@
 
     const W = window.innerWidth, H = window.innerHeight;
     const ix = W * 0.5, iy = H * 0.46;
-    const id = "shx" + (++uid);
 
+    // Smoothness (2026-10-23): EVERYTHING is built right at the click, before anything moves —
+    // the dark pieces (copies of the page), the cracks, dust and flash — and drawn once while
+    // still invisible. At the impact only animations start. The cracks are glowing strokes drawn
+    // ON TOP of the dark pieces (no animated mask: a mask forced all 16 page copies to be redrawn
+    // on every frame), and the falling bust has no animated blur.
     const overlay = el("div", "shx-overlay", { position: "fixed", inset: "0", zIndex: "9600", overflow: "hidden", perspective: "1500px", pointerEvents: "auto" });
     const stage = el("div", "shx-stage", { position: "absolute", inset: "0" });
     overlay.appendChild(stage);
-    document.body.appendChild(overlay);
 
     // ---- bust ----
     const bustH = Math.min(H * 0.42, W * 0.72);
     const bustW = bustH * 0.785;
     const bust = el("div", "shx-bust", { position: "absolute", height: bustH + "px", width: bustW + "px", left: (ix - bustW / 2) + "px", top: "0px", transformOrigin: "center", willChange: "transform, opacity", zIndex: "8" });
-    const bimg = el("img", null, { width: "100%", height: "100%", objectFit: "contain", filter: "drop-shadow(0 26px 50px rgba(0,0,0,.7))" });
+    // no drop-shadow: the bust is redrawn while it scales during the fall, and a big shadow made that slow
+    const bimg = el("img", null, { width: "100%", height: "100%", objectFit: "contain" });
     bimg.src = BUST_SRC; bimg.alt = "";
     bust.appendChild(bimg);
     stage.appendChild(bust);
 
     const restY = iy - bustH * 0.5;
     const fall = 780;
-    bust.animate([
-      { transform: `translate(0, ${(0.16 * H - bustH / 2).toFixed(1)}px) scale(1.5)`, filter: "blur(1.4px)" },
-      { transform: `translate(0, ${restY.toFixed(1)}px) scale(1)`, filter: "blur(0px)" },
-    ], { duration: fall, easing: "cubic-bezier(.45,.05,.6,1)", fill: "both" });
+    const bustStart = `translate(0, ${(0.16 * H - bustH / 2).toFixed(1)}px) scale(1.5)`;
+    bust.style.transform = bustStart;
 
-    setTimeout(() => { try { impact(); } catch (e) { swap(); if (overlay.parentNode) overlay.parentNode.removeChild(overlay); done(); } }, fall);
+    let scene;
+    try { scene = build(); } catch (e) { swap(); setTimeout(done, 20); return; }
+    document.body.appendChild(overlay);
 
-    function impact() {
+    // start once the bust is decoded and the scene has been drawn (two frames, still invisible)
+    const ready = Promise.race([bimg.decode().catch(() => {}), new Promise((r) => setTimeout(r, 1500))]);
+    ready.then(() => requestAnimationFrame(() => requestAnimationFrame(() => {
+      bust.animate([
+        { transform: bustStart },
+        { transform: `translate(0, ${restY.toFixed(1)}px) scale(1)` },
+      ], { duration: fall, easing: "cubic-bezier(.45,.05,.6,1)", fill: "both" });
+      setTimeout(() => {
+        try { impact(scene); }
+        catch (e) { swap(); if (overlay.parentNode) overlay.parentNode.removeChild(overlay); done(); }
+      }, fall);
+    })));
+
+    function build() {
       const snap = appEl.cloneNode(true);
       // the chart SVG is by far the heaviest subtree — strip it from the per-piece clones (the
-      // chart area still falls as a panel) so building ~16 shards stays cheap and smooth.
+      // chart area still falls as a panel) so the ~16 shards stay cheap.
       snap.querySelectorAll(".chart-host").forEach((h) => { h.innerHTML = ""; });
       snap.querySelectorAll("canvas").forEach((c) => c.remove());
 
@@ -131,7 +147,7 @@
         rays.push({ ang, pts: jaggedRay(ix, iy, ang, L, SEG, 0.26, 0.18) });
       }
 
-      // crack definitions (drawn into the mask AND the glow): main rays · branches · sub-branches · loose fissures
+      // crack definitions: main rays · branches · sub-branches · loose fissures
       const cracks = [];  // { d, w, delay, dur }
       const rayDur = [], rayDelay = [];
       rays.forEach((ray, i) => {
@@ -190,18 +206,27 @@
         const cx = poly.reduce((s, p) => s + p[0], 0) / poly.length;
         const cy = poly.reduce((s, p) => s + p[1], 0) / poly.length;
         const grow = 0.8;
-        const clip = poly.map((p) => {
+        const grown = poly.map((p) => {
           const dx = p[0] - cx, dy = p[1] - cy, m = Math.hypot(dx, dy) || 1;
-          return `${(p[0] + dx / m * grow).toFixed(1)}px ${(p[1] + dy / m * grow).toFixed(1)}px`;
-        }).join(",");
+          return [p[0] + dx / m * grow, p[1] + dy / m * grow];
+        });
+        // Each piece is only as big as its own slice of the screen (not the full screen), so the
+        // browser draws and moves ~1-2 screens' worth of pixels in total instead of 16.
+        const bx = Math.max(0, Math.floor(Math.min(...grown.map((p) => p[0]))));
+        const by = Math.max(0, Math.floor(Math.min(...grown.map((p) => p[1]))));
+        const bw = Math.min(W, Math.ceil(Math.max(...grown.map((p) => p[0])))) - bx;
+        const bh = Math.min(H, Math.ceil(Math.max(...grown.map((p) => p[1])))) - by;
+        if (bw <= 0 || bh <= 0) return;
+        const clip = grown.map((p) => `${(p[0] - bx).toFixed(1)}px ${(p[1] - by).toFixed(1)}px`).join(",");
         const pc = el("div", "shx-shard", {
-          position: "absolute", inset: "0", background: DARK_BACKDROP,
+          position: "absolute", left: bx + "px", top: by + "px", width: bw + "px", height: bh + "px",
+          background: DARK_BACKDROP, backgroundSize: `${W}px ${H}px`, backgroundPosition: `${-bx}px ${-by}px`,
           clipPath: `polygon(${clip})`, WebkitClipPath: `polygon(${clip})`,
-          transformOrigin: `${cx.toFixed(1)}px ${cy.toFixed(1)}px`, willChange: "transform, opacity",
+          transformOrigin: `${(cx - bx).toFixed(1)}px ${(cy - by).toFixed(1)}px`, willChange: "transform, opacity",
           overflow: "hidden", contain: "layout paint", backfaceVisibility: "hidden",
         });
         const inner = snap.cloneNode(true);
-        Object.assign(inner.style, { position: "absolute", left: "0", top: "0", width: W + "px", height: H + "px", margin: "0" });
+        Object.assign(inner.style, { position: "absolute", left: -bx + "px", top: -by + "px", width: W + "px", height: H + "px", margin: "0" });
         pc.appendChild(inner);
         darkWrap.appendChild(pc);
         pieces.push({ pc, cx, cy, ring, d: Math.hypot(cx - ix, cy - iy) });
@@ -211,57 +236,67 @@
         addPiece(a.slice(0, K + 1).concat(b.slice(0, K + 1).reverse()), 0);   // inner
         addPiece(a.slice(K).concat(b.slice(K).reverse()), 1);                 // outer
       }
+      // invisible during the fall (it's already drawn, so showing it at the impact is instant)
+      darkWrap.style.opacity = "0.001";
+      darkWrap.style.willChange = "opacity";
       stage.appendChild(darkWrap);
 
-      // ---- red glow living UNDER the dark layer (shows through the crack slits) ----
+      // ---- cracks: glowing strokes on top of the dark pieces (halo · glow · hot core) ----
       const glow = svgEl("svg", { class: "shx-cracks", viewBox: `0 0 ${W} ${H}` });
-      Object.assign(glow.style, { position: "absolute", inset: "0", width: "100%", height: "100%", zIndex: "3", pointerEvents: "none", overflow: "visible" });
-      // ---- mask that punches the cracks OUT of the dark layer (black stroke = hole) ----
-      const defs = svgEl("svg", { width: "0", height: "0" });
-      defs.style.position = "absolute";
-      const mask = svgEl("mask", { id: id + "-m", maskUnits: "userSpaceOnUse", maskContentUnits: "userSpaceOnUse", x: "0", y: "0", width: W, height: H });
-      mask.appendChild(svgEl("rect", { x: "0", y: "0", width: W, height: H, fill: "#fff" }));
-      defs.appendChild(mask);
-      stage.appendChild(defs);
-
-      const animPairs = [];
+      Object.assign(glow.style, { position: "absolute", inset: "0", width: "100%", height: "100%", zIndex: "5", pointerEvents: "none", overflow: "visible" });
+      const crackAnims = [];
       cracks.forEach((ck) => {
-        const gp = svgEl("path", { d: ck.d, class: "shx-crack", "stroke-width": (ck.w * 0.55).toFixed(2) });
-        glow.appendChild(gp);
-        const mp = svgEl("path", { d: ck.d, fill: "none", stroke: "#000", "stroke-width": (ck.w * 1.75).toFixed(2), "stroke-linecap": "round", "stroke-linejoin": "round" });
-        mask.appendChild(mp);
-        animPairs.push({ gp, mp, delay: ck.delay, dur: ck.dur });
+        const layers = [
+          svgEl("path", { d: ck.d, class: "shx-crack-halo", "stroke-width": (ck.w * 2.6).toFixed(2) }),
+          svgEl("path", { d: ck.d, class: "shx-crack-glow", "stroke-width": (ck.w * 1.25).toFixed(2) }),
+          svgEl("path", { d: ck.d, class: "shx-crack", "stroke-width": (ck.w * 0.55).toFixed(2) }),
+        ];
+        layers.forEach((l) => glow.appendChild(l));
+        crackAnims.push({ layers, delay: ck.delay, dur: ck.dur });
       });
       stage.appendChild(glow);
-      darkWrap.style.webkitMaskImage = `url(#${id}-m)`;
-      darkWrap.style.maskImage = `url(#${id}-m)`;
-      darkWrap.style.webkitMask = `url(#${id}-m)`;
-      darkWrap.style.mask = `url(#${id}-m)`;
-
-      // grow every crack outward from the impact (stroke draws from the path's start point)
       let crackEnd = 0;
-      animPairs.forEach(({ gp, mp, delay, dur }) => {
-        crackEnd = Math.max(crackEnd, delay + dur);
-        [gp, mp].forEach((p) => {
-          const len = p.getTotalLength();
-          p.style.strokeDasharray = len; p.style.strokeDashoffset = len;
-          p.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: dur, delay, easing: "cubic-bezier(.22,.62,.35,1)", fill: "both" });
-        });
+      crackAnims.forEach((c) => {
+        crackEnd = Math.max(crackEnd, c.delay + c.dur);
+        c.len = c.layers[0].getTotalLength();
+        c.layers.forEach((l) => { l.style.strokeDasharray = c.len; l.style.strokeDashoffset = c.len; });
       });
 
-      // swap the live app to red now (hidden behind the dark pieces; peeks through the cracks)
+      // impact bloom + dust, ready and invisible
+      const fl = el("div", "shx-flash", {
+        position: "absolute", left: ix + "px", top: iy + "px", width: bustW * 1.5 + "px", height: bustW * 1.5 + "px",
+        transform: "translate(-50%,-50%)", borderRadius: "50%", zIndex: "6", pointerEvents: "none", opacity: "0",
+        background: "radial-gradient(closest-side, rgba(255,255,255,.92), rgba(255,64,88,.6) 36%, rgba(255,40,70,0) 72%)",
+      });
+      stage.appendChild(fl);
+      const dusts = [];
+      for (let i = 0; i < 8; i++) {
+        const sz = rnd(bustH * 0.18, bustH * 0.44);
+        const du = el("div", "shx-dust", {
+          position: "absolute", left: (ix + rnd(-1, 1) * bustW * 0.5) + "px", top: (iy + rnd(-12, 6)) + "px",
+          width: sz + "px", height: sz + "px", borderRadius: "50%", transform: "translate(-50%,-50%)", zIndex: "5", opacity: "0",
+          background: "radial-gradient(closest-side, rgba(78,10,20,.55), rgba(130,18,34,.14) 55%, transparent 76%)",
+        });
+        stage.appendChild(du);
+        dusts.push(du);
+      }
+      return { darkWrap, pieces, glow, crackAnims, crackEnd, fl, dusts, maxR };
+    }
+
+    function impact({ darkWrap, pieces, glow, crackAnims, crackEnd, fl, dusts, maxR }) {
+      // the dark pieces take over from the live page, which turns red underneath
+      darkWrap.style.opacity = "";
       swap();
+
+      // grow every crack outward from the impact (stroke draws from the path's start point)
+      crackAnims.forEach(({ layers, delay, dur, len }) => {
+        const timing = { duration: dur, delay, easing: "cubic-bezier(.22,.62,.35,1)", fill: "both" };
+        layers.forEach((l) => l.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], timing));
+      });
 
       const HOLD = 420;
       const shatterStart = crackEnd + HOLD;
 
-      // impact bloom (right at landing)
-      const fl = el("div", "shx-flash", {
-        position: "absolute", left: ix + "px", top: iy + "px", width: bustW * 1.5 + "px", height: bustW * 1.5 + "px",
-        transform: "translate(-50%,-50%)", borderRadius: "50%", zIndex: "6", pointerEvents: "none",
-        background: "radial-gradient(closest-side, rgba(255,255,255,.92), rgba(255,64,88,.6) 36%, rgba(255,40,70,0) 72%)",
-      });
-      stage.appendChild(fl);
       fl.animate([
         { opacity: 0, transform: "translate(-50%,-50%) scale(.4)" },
         { opacity: 1, transform: "translate(-50%,-50%) scale(1)", offset: .25 },
@@ -269,29 +304,22 @@
       ], { duration: 660, easing: "ease-out", fill: "both" });
 
       // dust + a sharp screen-shake on landing, then a smaller jolt when it shatters
-      for (let i = 0; i < 8; i++) {
-        const sz = rnd(bustH * 0.18, bustH * 0.44);
-        const du = el("div", "shx-dust", {
-          position: "absolute", left: (ix + rnd(-1, 1) * bustW * 0.5) + "px", top: (iy + rnd(-12, 6)) + "px",
-          width: sz + "px", height: sz + "px", borderRadius: "50%", transform: "translate(-50%,-50%)", zIndex: "5",
-          background: "radial-gradient(closest-side, rgba(78,10,20,.55), rgba(130,18,34,.14) 55%, transparent 76%)",
-        });
-        stage.appendChild(du);
+      dusts.forEach((du) => {
         du.animate([
           { opacity: 0, transform: "translate(-50%,-50%) scale(.3) translateY(0)" },
           { opacity: .55, offset: .2 },
           { opacity: 0, transform: `translate(-50%,-50%) scale(1.8) translateY(-${40 + Math.random() * 60}px)` },
         ], { duration: 1100 + Math.random() * 500, easing: "cubic-bezier(.2,.6,.3,1)", fill: "both" });
-      }
+      });
       const shakeKf = (amp) => { const kf = []; for (let i = 0; i <= 8; i++) { const dd = 1 - i / 8; kf.push({ transform: `translate(${rnd(-1, 1) * amp * dd}px, ${rnd(-1, 1) * amp * dd}px)` }); } kf.push({ transform: "translate(0,0)" }); return kf; };
       stage.animate(shakeKf(16), { duration: 440, easing: "ease-out", fill: "both" });
-      try { appEl.animate(shakeKf(16).map((k) => ({ transform: k.transform })), { duration: 440, easing: "ease-out" }); } catch (_) {}
-      setTimeout(() => { stage.animate(shakeKf(9), { duration: 360, easing: "ease-out" }); try { appEl.animate(shakeKf(9).map((k) => ({ transform: k.transform })), { duration: 360, easing: "ease-out" }); } catch (_) {} }, shatterStart);
+      setTimeout(() => {
+        stage.animate(shakeKf(9), { duration: 360, easing: "ease-out" });
+        try { appEl.animate(shakeKf(9), { duration: 360, easing: "ease-out" }); } catch (_) {}
+      }, shatterStart);
 
-      // At the shatter the mask is dropped, but every piece immediately backs apart so its lit
-      // cracks turn into real GAPS (red showing through) — the glow lingers briefly to cover the
-      // hand-off so the cracks never visually "disappear".
-      setTimeout(() => { darkWrap.style.webkitMask = "none"; darkWrap.style.mask = "none"; darkWrap.style.webkitMaskImage = "none"; darkWrap.style.maskImage = "none"; }, shatterStart);
+      // at the shatter the pieces back apart so the cracks turn into real gaps (red showing
+      // through); the glow lingers briefly to cover the hand-off
       glow.animate([{ opacity: 1, offset: 0 }, { opacity: 1, offset: 0.45 }, { opacity: 0, offset: 1 }], { duration: 560, delay: shatterStart, easing: "ease-in", fill: "both" });
 
       // ---- the shatter ----

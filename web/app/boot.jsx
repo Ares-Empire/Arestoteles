@@ -18,6 +18,9 @@
 
   function Root() {
     const [isMobile, setIsMobile] = useState(() => window.matchMedia(MQ).matches);
+    // While the intro plays, the app isn't built yet: building it at the same time made the
+    // bust's fall stutter. It is built (and drawn, under the intro) once the big motion is over.
+    const [appOn, setAppOn] = useState(!willPlayIntro || !window.ArestotelesIntro);
     useEffect(() => {
       const m = window.matchMedia(MQ);
       const fn = (e) => setIsMobile(e.matches);
@@ -34,8 +37,14 @@
         // onReveal fires as the intro starts its crossfade → the overlay dissolves
         // straight into the live app. onDone is a belt-and-suspenders reveal (e.g. the
         // reduced-motion path, which skips straight to the end).
-        window.ArestotelesIntro.play({ variant, reducedOk: true, onReveal: revealApp, onDone: revealApp });
+        window.ArestotelesIntro.play({
+          variant, reducedOk: true,
+          onSettled: () => { setAppOn(true); requestAnimationFrame(revealApp); },
+          onReveal: () => { setAppOn(true); revealApp(); },
+          onDone: revealApp,
+        });
       } else {
+        setAppOn(true);
         revealApp();
       }
     }, []);
@@ -43,6 +52,7 @@
     const Mobile = window.ArestotelesMobile;
     const Desktop = window.ArestotelesApp;
     const Tweaks = window.ArestotelesTweaks;
+    if (!appOn) return null;
     return (
       <React.Fragment>
         {isMobile && Mobile ? <Mobile /> : <Desktop />}
