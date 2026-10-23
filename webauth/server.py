@@ -108,7 +108,11 @@ def _b64pad(s: str) -> bytes:
 
 
 def _sso_sign(payload: str) -> str:
-    return urlsafe_b64encode(hmac.new(SSO_SECRET, payload.encode(), hashlib.sha256).digest()).decode().rstrip("=")
+    return (
+        urlsafe_b64encode(hmac.new(SSO_SECRET, payload.encode(), hashlib.sha256).digest())
+        .decode()
+        .rstrip("=")
+    )
 
 
 def verify_sso(token: str | None) -> bool:
@@ -223,7 +227,11 @@ def login_page(error: str = "") -> bytes:
 
 class Handler(SimpleHTTPRequestHandler):
     # the slim container has no system MIME table, so name the types the site uses
-    extensions_map: ClassVar[dict[str, str]] = {**SimpleHTTPRequestHandler.extensions_map, ".webp": "image/webp", ".svg": "image/svg+xml"}
+    extensions_map: ClassVar[dict[str, str]] = {
+        **SimpleHTTPRequestHandler.extensions_map,
+        ".webp": "image/webp",
+        ".svg": "image/svg+xml",
+    }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=WEB_ROOT, **kwargs)
