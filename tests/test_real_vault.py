@@ -144,23 +144,37 @@ def test_real_vault_lines_round_trip(setup):
 
 
 def test_real_vault_edits_on_the_copy(setup, copy):
-    """A few structured edits on the temporary copy (committed there only, never pushed): no new check errors."""
+    """A few structured edits on the temporary copy (committed there only, never pushed): no new check errors, and a
+    "discuss later" mark and its status pass the vault's own check without warnings."""
     world, service, _ = setup
     client = TestClient(create_app(service))
     groups = service.current().vault["positions"]
     topic = next((g for g in groups if g["note"] != "Positions" and len(g["positions"]) >= 2), None)
     assert topic is not None
     first, second = topic["positions"][0]["id"], topic["positions"][1]["id"]
-    statuses = []
+    statuses, warnings, discuss = [], 0, None
     for body in ({"op": "change_position", "position": first, "text": "A made-up test view.", "why": "A test."},
                  {"op": "add_position", "note": topic["note"], "text": "Another made-up view.", "evidence": []},
+                 {"op": "quick_note", "text": "", "kind": "discuss", "about": second},
                  {"op": "drop_position", "position": second, "why": "A test."},
-                 {"op": "quick_note", "text": "a made-up test note"}):
+                 {"op": "quick_note", "text": "a made-up test note"},
+                 {"op": "set_inbox_status", "note": None, "status": "processed"}):
+        if body["op"] == "set_inbox_status":
+            body["note"] = discuss
         answer = client.post("/api/arestoteles/edits", json=body, headers=APP)
         statuses.append(answer.status_code)
         assert answer.status_code == 200
         assert answer.json()["pushed"] is False
+        if body["op"] in ("quick_note", "set_inbox_status"):
+            warnings += len(answer.json()["warnings"])
+        if body.get("kind") == "discuss":
+            discuss = answer.json()["changed"][0]
     after = next(g for g in service.current().vault["positions"] if g["note"] == topic["note"])
     assert len(after["positions"]) == len(topic["positions"])   # one added, one dropped
     assert len(after["positions"][0]["history"]) == len(topic["positions"][0]["history"]) + 1
-    print(f"\nREAL VAULT (copy): {len(statuses)} edits applied, statuses {sorted(set(statuses))}")
+    assert warnings == 0
+    inbox = service.current().notes[discuss]["inbox"]
+    follows = inbox["about"] == topic["note"] and inbox["position"] is None and inbox["status"] == "processed"
+    assert follows   # the mark on the dropped position stays on its note (a bool, so no name is ever shown)
+    print(f"\nREAL VAULT (copy): {len(statuses)} edits applied, statuses {sorted(set(statuses))}, "
+          f"{warnings} new check warnings from the Inbox edits")

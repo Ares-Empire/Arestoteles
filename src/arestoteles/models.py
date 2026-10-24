@@ -76,10 +76,18 @@ class EditNote(_Strict):
 class QuickNote(_Strict):
     op: Literal["quick_note"]
     text: str
+    about: Optional[str] = None                        # a note id, or a position id "<note>#<n>"
+    kind: Literal["note", "discuss"] = "note"
+
+
+class SetInboxStatus(_Strict):
+    op: Literal["set_inbox_status"]
+    note: str
+    status: Literal["new", "processed"]
 
 
 Edit = Annotated[Union[ConfirmPosition, RewordPosition, ChangePosition, DropPosition, AddPosition, SetConfidence,
-                       AdoptCallout, DismissCallout, EditNote, QuickNote], Field(discriminator="op")]
+                       AdoptCallout, DismissCallout, EditNote, QuickNote, SetInboxStatus], Field(discriminator="op")]
 EDIT = TypeAdapter(Edit)
 
 

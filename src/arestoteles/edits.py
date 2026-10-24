@@ -2,11 +2,13 @@
 
 Pure: the current files come in, the new files go out (`Plan`); writing, checking, committing and pushing is the
 service's job. Positions keep their bold, numbering, `→` links and Positions.md's embeds; changed and dropped views go
-to "How my view changed"; every edited note gets `updated: <today>`; a quick note is written verbatim.
+to "How my view changed"; every edited note gets `updated: <today>`; a quick note is written verbatim (its
+frontmatter says what it is about and whether it is a "discuss later" mark).
 """
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -49,6 +51,21 @@ class _Note:
     @property
     def text(self) -> str:
         return self.prefix + "\n".join(self.lines)
+
+    @property
+    def frontmatter(self) -> dict:
+        m = notefile.FRONTMATTER.match(self.prefix)
+        return notefile.parse(m[1]) if m else {}
+
+    def set_field(self, key: str, value: str, after: tuple[str, ...] = ()) -> None:
+        self._new_prefix(notefile.set_field(self.prefix, key, value, after))
+
+    def remove_field(self, key: str) -> None:
+        self._new_prefix(notefile.remove_field(self.prefix, key))
+
+    def _new_prefix(self, prefix: str) -> None:
+        if notefile.FRONTMATTER.fullmatch(prefix):
+            self.prefix = prefix
 
 
 class Editor:
@@ -150,7 +167,26 @@ class Editor:
             for i in range(history[0] + 1, history[1]):
                 n.lines[i] = pos.renumber_entry(n.lines[i], k)
         self.history(n, pos.entry_line(self.today, item.text, reason, None))
-        return self.finish(Plan(f"App: drop position {k} ({n.id})"), n)
+        return self.finish(Plan(f"App: drop position {k} ({n.id})"), n, *self._inbox_after_drop(n.id, k))
+
+    def _inbox_after_drop(self, note_id: str, dropped: int) -> list[_Note]:
+        """Inbox notes about a position move with the list as history entries do: those about the dropped position
+        lose their number (they stay about the note), those about later positions move up by one."""
+        moved = []
+        for inbox_id, other in sorted(self.vault.notes.items()):
+            about = other.get("inbox") or {}
+            if about.get("about") != note_id or about.get("position") is None:
+                continue
+            n = self.note(inbox_id)
+            number = n.frontmatter.get("position")
+            if not isinstance(number, int) or isinstance(number, bool) or number < dropped:
+                continue
+            if number == dropped:
+                n.remove_field("position")
+            else:
+                n.set_field("position", str(number - 1))
+            moved.append(n)
+        return moved
 
     def add_position(self, note: str, text: str, evidence: list[str]) -> Plan:
         words = _position_words(text)
@@ -201,12 +237,8 @@ class Editor:
         n = self.note(note)
         if self.vault.notes[note]["type"] not in CONFIDENCE_TYPES:
             raise EditError(422, "no_confidence")
-        plan = Plan(f"App: set confidence {confidence} ({note})")
-        text = notefile.set_field(n.text, "confidence", confidence, after=("type",))
-        if text != n.text:
-            m = notefile.FRONTMATTER.match(text)
-            n.prefix = m[0] if m else n.prefix
-        return self.finish(plan, n)
+        n.set_field("confidence", confidence, after=("type",))
+        return self.finish(Plan(f"App: set confidence {confidence} ({note})"), n)
 
     def _callout(self, note: str, callout: int, version: str) -> tuple[_Note, int, int]:
         n = self.note(note, version)
@@ -239,24 +271,60 @@ class Editor:
         n.lines = (body if body.endswith("\n") else body + "\n").split("\n")
         return self.finish(Plan(f"App: edit ({note})"), n)
 
-    def quick_note(self, text: str) -> Plan:
-        if not text.strip():
+    def quick_note(self, text: str, about: str | None = None, kind: str = "note") -> Plan:
+        """A new Inbox note, the text verbatim. `about` names a note or a position ("<note>#<n>"); a "discuss
+        later" mark (`kind` "discuss") may come without text when it is about something."""
+        content = text.replace("\r\n", "\n")
+        target = self._about(about) if about else None
+        if not content.strip() and (kind != "discuss" or target is None):
             raise EditError(422, "empty_text")
-        stem = f"{self.today} {self.now:%H%M} {_first_words(text)}".strip()
+        if content.strip():
+            words = _first_words(content)
+        else:
+            words = _first_words(f"discuss {self.vault.notes[target[0]]['title']}", count=8, limit=60)
+        stem = f"{self.today} {self.now:%H%M} {words}".strip()
         name, count = stem, 1
         while name in self.vault.paths or f"Inbox/{name}.md" in self.vault.paths.values():
             count += 1
             name = f"{stem} {count}"
         path = f"Inbox/{name}.md"
-        content = text.replace("\r\n", "\n")
-        plan = Plan(f"App: quick note ({name})", created=[path], changed=[name])
-        plan.files[path] = (f"---\ntype: inbox\nstatus: new\ncreated: {self.today}\n---\n"
-                            + (content if content.endswith("\n") else content + "\n"))
+        frontmatter = ["type: inbox", "status: new", f"created: {self.today}"]
+        if kind == "discuss":
+            frontmatter.append("kind: discuss")
+        if target is not None:
+            note_id, number = target
+            if number is None:
+                frontmatter.append(f"about: {_yaml_string(f'[[{note_id}]]')}")
+            else:
+                heading = pos.ACROSS_TOPICS if self.vault.notes[note_id]["type"] == "positions" else pos.MY_POSITION
+                frontmatter += [f"about: {_yaml_string(f'[[{note_id}#{heading}]]')}", f"position: {number}"]
+        body = (content if content.endswith("\n") else content + "\n") if content.strip() else ""
+        what = "discuss later" if kind == "discuss" else "quick note"
+        plan = Plan(f"App: {what} ({name})", created=[path], changed=[name])
+        plan.files[path] = "---\n" + "\n".join(frontmatter) + "\n---\n" + body
         return plan
+
+    def _about(self, about: str) -> tuple[str, int | None]:
+        """(note id, position number or None) of a quick note's `about`: 404 when unknown, 409 when the position
+        is gone."""
+        if about in self.vault.paths:
+            return about, None
+        if "#" not in about:
+            raise EditError(404, "unknown_note")
+        n, _, k = self.position(about)
+        return n.id, k
+
+    def set_inbox_status(self, note: str, status: str) -> Plan:
+        """Ticks an Inbox note off (`processed`) or back (`new`); the text stays as it is."""
+        n = self.note(note)
+        if self.vault.notes[note]["type"] != "inbox":
+            raise EditError(422, "not_inbox")
+        n.set_field("status", status, after=("type",))
+        return self.finish(Plan(f"App: mark {status} ({note})"), n)
 
 
 OPS = ("confirm_position", "reword_position", "change_position", "drop_position", "add_position", "set_confidence",
-       "adopt_callout", "dismiss_callout", "edit_note", "quick_note")
+       "adopt_callout", "dismiss_callout", "edit_note", "quick_note", "set_inbox_status")
 
 
 def apply(edit: dict, editor: Editor) -> Plan:
@@ -282,6 +350,11 @@ def _why(value: str) -> str:
     if not reason:
         raise EditError(422, "empty_why")
     return reason
+
+
+def _yaml_string(value: str) -> str:
+    """A double-quoted YAML string (JSON's quoting is valid YAML)."""
+    return json.dumps(value, ensure_ascii=False)
 
 
 def _first_words(text: str, count: int = 4, limit: int = 40) -> str:

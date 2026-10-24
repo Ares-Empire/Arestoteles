@@ -52,6 +52,7 @@ TEXTS: dict[str, tuple[str, str]] = {
     "unknown_evidence": ("The evidence names a note that does not exist: {note}.",
                          "Der Beleg nennt eine Notiz, die es nicht gibt: {note}."),
     "no_confidence": ("This kind of note has no confidence.", "Diese Art Notiz hat keine Einschätzung."),
+    "not_inbox": ("Only Inbox notes have a status.", "Nur Inbox-Notizen haben einen Status."),
     "check_errors": ("The vault check found errors, so the edit was undone: {errors}",
                      "Die Prüfung hat Fehler gefunden, deshalb wurde die Änderung rückgängig gemacht: {errors}"),
     # warnings the server adds to an edit result

@@ -26,6 +26,18 @@ def test_set_field_replaces_or_inserts():
     assert notefile.set_field(listed, "where", "[Asia]") == "---\ntype: event\nwhere: [Asia]\nfrom: 1\n---\n"
     assert notefile.set_field("# no frontmatter\n", "updated", "x") == "# no frontmatter\n"
     assert notefile.set_field("---\ntype: home\n---\n", "updated", "x") == "---\ntype: home\nupdated: x\n---\n"
+    assert notefile.set_field(listed, "kind", "x", after=("where",)) == (   # after the anchor's whole value
+        "---\ntype: event\nwhere:\n  - Europe\nkind: x\nfrom: 1\n---\n")
+
+
+def test_remove_field_keeps_every_other_line():
+    text = '---\ntype: inbox\nabout: "[[A#My position]]"\nposition: 2\nwhere:\n  - Europe\n---\nposition: 2\n'
+    assert notefile.remove_field(text, "position") == (
+        '---\ntype: inbox\nabout: "[[A#My position]]"\nwhere:\n  - Europe\n---\nposition: 2\n')   # body untouched
+    assert notefile.remove_field(text, "where") == (
+        '---\ntype: inbox\nabout: "[[A#My position]]"\nposition: 2\n---\nposition: 2\n')
+    assert notefile.remove_field(text, "missing") == text
+    assert notefile.remove_field("# no frontmatter\n", "type") == "# no frontmatter\n"
 
 
 def test_windows_line_endings_survive_an_edit(world):

@@ -11,6 +11,7 @@ from conftest import APP, git, note, position, edit
 
 PRESS = "Topics/Printing press/Printing press.md"
 SPREAD = "Topics/Printing press/Spread of print.md"
+DISCUSS = "2026-10-23 2110 discuss Printing press"   # the fixture's "discuss later" mark on Printing press#1
 APP_AUTHOR = "Patrik Breeck (Arestoteles app) <287037715+carlsenares@users.noreply.github.com>"
 
 
@@ -193,6 +194,17 @@ def test_add_position_creates_the_section_and_the_embed(client, world, service):
      "This kind of note has no confidence."),
     ({"op": "set_confidence", "note": "Printing press", "confidence": "certain"}, 400, "Bad request."),
     ({"op": "quick_note", "text": " \n "}, 422, "The text is empty."),
+    ({"op": "quick_note", "text": "", "kind": "discuss"}, 422, "The text is empty."),       # about nothing
+    ({"op": "quick_note", "text": " ", "about": "Spread of print"}, 422, "The text is empty."),   # a note needs text
+    ({"op": "quick_note", "text": "x", "about": "Nowhere"}, 404, "Unknown note."),
+    ({"op": "quick_note", "text": "x", "about": "Gutenberg Bible#1"}, 404, "Unknown position."),
+    ({"op": "quick_note", "text": "", "kind": "discuss", "about": "Printing press#9"}, 409,
+     "This position no longer exists; it was changed elsewhere."),
+    ({"op": "quick_note", "text": "x", "kind": "later"}, 400, "Bad request."),
+    ({"op": "set_inbox_status", "note": "Printing press", "status": "processed"}, 422,
+     "Only Inbox notes have a status."),
+    ({"op": "set_inbox_status", "note": "Nowhere", "status": "processed"}, 404, "Unknown note."),
+    ({"op": "set_inbox_status", "note": DISCUSS, "status": "done"}, 400, "Bad request."),
     ({"op": "explode"}, 400, "Bad request."),
     ({"op": "quick_note", "text": "x", "extra": 1}, 400, "Bad request."),
 ])
@@ -321,6 +333,106 @@ def test_quick_note(client, world):
     assert again.json()["changed"] == [f"{name} 2"]
     odd = edit(client, op="quick_note", text="[[a]] / b#c ^d")
     assert odd.json()["changed"] == ["2026-10-24 1805 a bc d"]
+    assert n["inbox"] == {"status": "new", "kind": "note", "about": None, "position": None}
+
+
+def test_quick_note_about_a_note(client, world):
+    answer = edit(client, op="quick_note", text="Basel had a press by 1468?", about="Spread of print")
+    assert answer.status_code == 200
+    name = "2026-10-24 1805 Basel had a press"
+    assert answer.json()["changed"] == [name]
+    assert file(world, f"Inbox/{name}.md") == (
+        '---\ntype: inbox\nstatus: new\ncreated: 2026-10-24\nabout: "[[Spread of print]]"\n---\n'
+        "Basel had a press by 1468?\n")
+    vault = answer.json()["vault"]
+    assert note(vault, name)["inbox"] == {"status": "new", "kind": "note", "about": "Spread of print", "position": None}
+    assert name in note(vault, "Spread of print")["backlinks"]   # the frontmatter link counts, as in Obsidian
+    assert answer.json()["warnings"] == []                       # the vault check accepts the keys
+    assert last_commit(world).endswith(f"|App: quick note ({name})")
+
+
+def test_discuss_later_about_a_position(client, world):
+    answer = edit(client, op="quick_note", text="", kind="discuss", about="Printing press#2")
+    assert answer.status_code == 200
+    name = "2026-10-24 1805 discuss Printing press"
+    assert answer.json()["changed"] == [name]
+    assert file(world, f"Inbox/{name}.md") == (
+        "---\ntype: inbox\nstatus: new\ncreated: 2026-10-24\nkind: discuss\n"
+        'about: "[[Printing press#My position]]"\nposition: 2\n---\n')
+    n = note(answer.json()["vault"], name)
+    assert n["inbox"] == {"status": "new", "kind": "discuss", "about": "Printing press", "position": 2}
+    assert (n["blocks"], n["title"]) == ([], name)
+    assert answer.json()["warnings"] == []
+    assert last_commit(world) == f"{APP_AUTHOR}|App: discuss later ({name})"
+    again = edit(client, op="quick_note", text="", kind="discuss", about="Printing press#1")
+    assert again.json()["changed"] == [f"{name} 2"]
+
+
+def test_discuss_later_with_words_about_an_across_topics_position(client, world):
+    answer = edit(client, op="quick_note", text="Is this too broad?\nAsk about Venice.", kind="discuss",
+                  about="Positions#1")
+    assert answer.status_code == 200
+    name = "2026-10-24 1805 Is this too broad"
+    assert file(world, f"Inbox/{name}.md") == (
+        "---\ntype: inbox\nstatus: new\ncreated: 2026-10-24\nkind: discuss\n"
+        'about: "[[Positions#Across topics]]"\nposition: 1\n---\nIs this too broad?\nAsk about Venice.\n')
+    assert note(answer.json()["vault"], name)["inbox"] == {
+        "status": "new", "kind": "discuss", "about": "Positions", "position": 1}
+    plain = edit(client, op="quick_note", text="Venice and Aldus?", kind="discuss")
+    assert plain.status_code == 200
+    assert note(plain.json()["vault"], plain.json()["changed"][0])["inbox"] == {
+        "status": "new", "kind": "discuss", "about": None, "position": None}
+
+
+def test_set_inbox_status(client, world):
+    vault = client.get("/api/arestoteles/vault", headers=APP).json()
+    assert note(vault, DISCUSS)["inbox"] == {"status": "new", "kind": "discuss", "about": "Printing press",
+                                             "position": 1}
+    old_version = note(vault, DISCUSS)["version"]
+    answer = edit(client, op="set_inbox_status", note=DISCUSS, status="processed")
+    assert answer.status_code == 200
+    assert answer.json()["changed"] == [DISCUSS]
+    assert file(world, f"Inbox/{DISCUSS}.md") == (
+        "---\ntype: inbox\nstatus: processed\ncreated: 2026-10-23\nupdated: 2026-10-24\nkind: discuss\n"
+        'about: "[[Printing press#My position]]"\nposition: 1\n---\n')
+    n = note(answer.json()["vault"], DISCUSS)
+    assert n["inbox"]["status"] == "processed"
+    assert n["version"] != old_version
+    assert last_commit(world) == f"{APP_AUTHOR}|App: mark processed ({DISCUSS})"
+    count = commits(world)
+    same = edit(client, op="set_inbox_status", note=DISCUSS, status="processed")
+    assert (same.status_code, same.json()["changed"], commits(world)) == (200, [], count)
+    stale = edit(client, op="edit_note", note=DISCUSS, version=old_version, markdown="A thought.\n")
+    assert stale.status_code == 409   # the status edit changed the file's version
+    back = edit(client, op="set_inbox_status", note=DISCUSS, status="new")
+    assert note(back.json()["vault"], DISCUSS)["inbox"]["status"] == "new"
+    assert last_commit(world).endswith(f"|App: mark new ({DISCUSS})")
+    text = file(world, "Inbox/2026-10-22 0915 paper was the bottleneck.md")
+    edit(client, op="set_inbox_status", note="2026-10-22 0915 paper was the bottleneck", status="processed")
+    assert file(world, "Inbox/2026-10-22 0915 paper was the bottleneck.md") == (
+        text.replace("status: new", "status: processed").replace("updated: 2026-10-20", "updated: 2026-10-24"))
+
+
+def test_status_error_in_german(client):
+    answer = edit(client, "de", op="set_inbox_status", note="Printing press", status="processed")
+    assert (answer.status_code, answer.json()["error"]) == (422, "Nur Inbox-Notizen haben einen Status.")
+
+
+def test_inbox_notes_follow_a_dropped_position(client, world):
+    later = edit(client, op="quick_note", text="", kind="discuss", about="Printing press#2").json()["changed"][0]
+    about_note = edit(client, op="quick_note", text="press and paper", about="Printing press").json()["changed"][0]
+    answer = edit(client, op="drop_position", position="Printing press#1", why="No longer sure.")
+    assert answer.status_code == 200
+    assert answer.json()["changed"] == ["Printing press", DISCUSS, later]   # not the note about the whole page
+    assert file(world, f"Inbox/{DISCUSS}.md") == (   # about the dropped position: still about the note
+        "---\ntype: inbox\nstatus: new\ncreated: 2026-10-23\nupdated: 2026-10-24\nkind: discuss\n"
+        'about: "[[Printing press#My position]]"\n---\n')
+    assert "\nposition: 1\n---\n" in file(world, f"Inbox/{later}.md")
+    vault = answer.json()["vault"]
+    assert [note(vault, i)["inbox"]["position"] for i in (DISCUSS, later, about_note)] == [None, 1, None]
+    assert [note(vault, i)["inbox"]["about"] for i in (DISCUSS, later, about_note)] == ["Printing press"] * 3
+    assert position(vault, "Printing press#1")["text"] == "Printers were businessmen first; they printed what sold."
+    assert answer.json()["warnings"] == []
 
 
 # ── git: concurrent pushes, conflicts, GitHub unreachable ──

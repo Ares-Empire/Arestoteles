@@ -48,6 +48,17 @@ def iso(value: object) -> str | None:
     return None
 
 
+def _field(lines: list[str], key: str) -> tuple[int, int] | None:
+    """The frontmatter lines [start, end) of a top-level `key:` with its multi-line value (indented or list lines)."""
+    for i, current in enumerate(lines):
+        if re.match(rf"{re.escape(key)}\s*:", current):
+            end = i + 1
+            while end < len(lines) and lines[end][:1] in (" ", "\t", "-") and lines[end].strip():
+                end += 1
+            return i, end
+    return None
+
+
 def set_field(text: str, key: str, value: str, after: tuple[str, ...] = ()) -> str:
     """Set a top-level scalar `key: value` in the frontmatter, keeping every other line as it is.
 
@@ -58,19 +69,28 @@ def set_field(text: str, key: str, value: str, after: tuple[str, ...] = ()) -> s
         return text
     lines = m[1].split("\n")
     line = f"{key}: {value}"
-    for i, current in enumerate(lines):
-        if re.match(rf"{re.escape(key)}\s*:", current):
-            end = i + 1   # drop an old multi-line value (indented or list lines) with it
-            while end < len(lines) and lines[end][:1] in (" ", "\t", "-") and lines[end].strip():
-                end += 1
-            lines[i:end] = [line]
-            break
+    span = _field(lines, key)
+    if span is not None:
+        lines[span[0]:span[1]] = [line]   # an old multi-line value goes with it
     else:
         at = len(lines)
         for anchor in after:
-            hit = next((i for i, current in enumerate(lines) if re.match(rf"{re.escape(anchor)}\s*:", current)), None)
+            hit = _field(lines, anchor)
             if hit is not None:
-                at = hit + 1
+                at = hit[1]   # after its whole value
                 break
         lines.insert(at, line)
+    return "---\n" + "\n".join(lines) + "\n---\n" + text[m.end():]
+
+
+def remove_field(text: str, key: str) -> str:
+    """Remove a top-level `key:` (and its multi-line value) from the frontmatter; every other line stays."""
+    m = FRONTMATTER.match(text)
+    if not m:
+        return text
+    lines = m[1].split("\n")
+    span = _field(lines, key)
+    if span is None:
+        return text
+    del lines[span[0]:span[1]]
     return "---\n" + "\n".join(lines) + "\n---\n" + text[m.end():]
