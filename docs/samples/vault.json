@@ -26,7 +26,11 @@
           "kind": "heading",
           "level": 2,
           "text": "Where I landed",
-          "anchor": "Where I landed"
+          "anchor": "Where I landed",
+          "lines": [
+            2,
+            3
+          ]
         },
         {
           "kind": "list",
@@ -34,15 +38,27 @@
           "items": [
             {
               "text": "The press made the [Reformation unstoppable](arestoteles://note/Printing%20press), not inevitable.",
-              "depth": 0
+              "depth": 0,
+              "lines": [
+                3,
+                4
+              ]
             }
+          ],
+          "lines": [
+            3,
+            4
           ]
         },
         {
           "kind": "heading",
           "level": 2,
           "text": "Still open",
-          "anchor": "Still open"
+          "anchor": "Still open",
+          "lines": [
+            5,
+            6
+          ]
         },
         {
           "kind": "list",
@@ -50,12 +66,21 @@
           "items": [
             {
               "text": "How much did literacy limit the effect?",
-              "depth": 0
+              "depth": 0,
+              "lines": [
+                6,
+                7
+              ]
             }
+          ],
+          "lines": [
+            6,
+            7
           ]
         }
       ],
       "brief": null,
+      "inbox": null,
       "id": "2026-10-20 Printing press",
       "path": "Sessions/2026-10-20 Printing press.md",
       "type": "session",
@@ -79,15 +104,55 @@
       "blocks": [
         {
           "kind": "paragraph",
-          "text": "paper was the bottleneck not the press?? check"
+          "text": "paper was the bottleneck not the press?? check",
+          "lines": [
+            0,
+            1
+          ]
         }
       ],
       "brief": null,
+      "inbox": {
+        "status": "new",
+        "kind": "note",
+        "about": null,
+        "position": null
+      },
       "id": "2026-10-22 0915 paper was the bottleneck",
       "path": "Inbox/2026-10-22 0915 paper was the bottleneck.md",
       "type": "inbox",
       "title": "2026-10-22 0915 paper was the bottleneck",
       "version": "c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5"
+    },
+    {
+      "summary": null,
+      "confidence": null,
+      "created": "2026-10-23",
+      "updated": null,
+      "tags": [],
+      "topic": null,
+      "part_of": null,
+      "event": null,
+      "led_to": [],
+      "links": [
+        "Printing press"
+      ],
+      "backlinks": [],
+      "positions": [],
+      "callouts": [],
+      "blocks": [],
+      "brief": null,
+      "inbox": {
+        "status": "new",
+        "kind": "discuss",
+        "about": "Printing press",
+        "position": 1
+      },
+      "id": "2026-10-23 2110 discuss Printing press",
+      "path": "Inbox/2026-10-23 2110 discuss Printing press.md",
+      "type": "inbox",
+      "title": "2026-10-23 2110 discuss Printing press",
+      "version": "ed6e5c260d9e9682ed2029a0ee04f1f7b7b0a433"
     },
     {
       "summary": null,
@@ -110,7 +175,11 @@
           "kind": "heading",
           "level": 2,
           "text": "The answers",
-          "anchor": "The answers"
+          "anchor": "The answers",
+          "lines": [
+            2,
+            3
+          ]
         },
         {
           "kind": "list",
@@ -118,26 +187,47 @@
           "items": [
             {
               "text": "**Yes, it was the cause:** without cheap copies the movement stays local.",
-              "depth": 0
+              "depth": 0,
+              "lines": [
+                3,
+                4
+              ]
             },
             {
               "text": "**It was the condition, not the cause:** earlier reformers had no press and failed.",
-              "depth": 0
+              "depth": 0,
+              "lines": [
+                4,
+                5
+              ]
             }
+          ],
+          "lines": [
+            3,
+            5
           ]
         },
         {
           "kind": "heading",
           "level": 2,
           "text": "Where I stand",
-          "anchor": "Where I stand"
+          "anchor": "Where I stand",
+          "lines": [
+            6,
+            7
+          ]
         },
         {
           "kind": "paragraph",
-          "text": "The condition, not the cause."
+          "text": "The condition, not the cause.",
+          "lines": [
+            7,
+            8
+          ]
         }
       ],
       "brief": null,
+      "inbox": null,
       "id": "Did print cause the Reformation",
       "path": "Library/Questions/Did print cause the Reformation.md",
       "type": "question",
@@ -179,10 +269,15 @@
               "Handelsstadt",
               "[Spread of print](arestoteles://note/Spread%20of%20print)"
             ]
+          ],
+          "lines": [
+            2,
+            6
           ]
         }
       ],
       "brief": null,
+      "inbox": null,
       "id": "Glossary",
       "path": "Glossary.md",
       "type": "glossary",
@@ -218,10 +313,15 @@
       "blocks": [
         {
           "kind": "paragraph",
-          "text": "About 180 copies, printed in Mainz with movable metal type: the first major book printed in Europe."
+          "text": "About 180 copies, printed in Mainz with movable metal type: the first major book printed in Europe.",
+          "lines": [
+            2,
+            3
+          ]
         }
       ],
       "brief": null,
+      "inbox": null,
       "id": "Gutenberg Bible",
       "path": "Library/Events/Gutenberg Bible.md",
       "type": "event",
@@ -250,7 +350,11 @@
           "kind": "heading",
           "level": 2,
           "text": "Topics",
-          "anchor": "Topics"
+          "anchor": "Topics",
+          "lines": [
+            2,
+            3
+          ]
         },
         {
           "kind": "list",
@@ -258,15 +362,27 @@
           "items": [
             {
               "text": "[Printing press](arestoteles://note/Printing%20press)",
-              "depth": 0
+              "depth": 0,
+              "lines": [
+                3,
+                4
+              ]
             }
+          ],
+          "lines": [
+            3,
+            4
           ]
         },
         {
           "kind": "heading",
           "level": 2,
           "text": "To learn about next",
-          "anchor": "To learn about next"
+          "anchor": "To learn about next",
+          "lines": [
+            5,
+            6
+          ]
         },
         {
           "kind": "list",
@@ -274,19 +390,35 @@
           "items": [
             {
               "text": "Paper mills in the 15th century",
-              "depth": 0
+              "depth": 0,
+              "lines": [
+                6,
+                7
+              ]
             },
             {
               "text": "How literacy grew after 1500",
-              "depth": 0
+              "depth": 0,
+              "lines": [
+                7,
+                8
+              ]
             }
+          ],
+          "lines": [
+            6,
+            8
           ]
         },
         {
           "kind": "heading",
           "level": 2,
           "text": "Conversations",
-          "anchor": "Conversations"
+          "anchor": "Conversations",
+          "lines": [
+            9,
+            10
+          ]
         },
         {
           "kind": "list",
@@ -294,12 +426,21 @@
           "items": [
             {
               "text": "[2026-10-20 Printing press](arestoteles://note/2026-10-20%20Printing%20press)",
-              "depth": 0
+              "depth": 0,
+              "lines": [
+                10,
+                11
+              ]
             }
+          ],
+          "lines": [
+            10,
+            11
           ]
         }
       ],
       "brief": null,
+      "inbox": null,
       "id": "Home",
       "path": "Home.md",
       "type": "home",
@@ -327,20 +468,33 @@
       "blocks": [
         {
           "kind": "paragraph",
-          "text": "Each drop in the cost of copying (print, the telegraph, the web) moved power from those who control the copies to those who get read."
+          "text": "Each drop in the cost of copying (print, the telegraph, the web) moved power from those who control the copies to those who get read.",
+          "lines": [
+            5,
+            6
+          ]
         },
         {
           "kind": "heading",
           "level": 2,
           "text": "My take",
-          "anchor": "My take"
+          "anchor": "My take",
+          "lines": [
+            7,
+            8
+          ]
         },
         {
           "kind": "paragraph",
-          "text": "The printers were businessmen first: they printed Luther because Luther sold."
+          "text": "The printers were businessmen first: they printed Luther because Luther sold.",
+          "lines": [
+            8,
+            9
+          ]
         }
       ],
       "brief": null,
+      "inbox": null,
       "id": "Information wants to be cheap",
       "path": "Library/Mechanisms/Information wants to be cheap.md",
       "type": "mechanism",
@@ -368,10 +522,15 @@
       "blocks": [
         {
           "kind": "paragraph",
-          "text": "Monk and professor in Wittenberg; the most printed author of the [Reformation](arestoteles://note/Reformation)."
+          "text": "Monk and professor in Wittenberg; the most printed author of the [Reformation](arestoteles://note/Reformation).",
+          "lines": [
+            2,
+            3
+          ]
         }
       ],
       "brief": null,
+      "inbox": null,
       "id": "Martin Luther",
       "path": "Library/Actors/Martin Luther.md",
       "type": "actor",
@@ -400,39 +559,64 @@
       "blocks": [
         {
           "kind": "paragraph",
-          "text": "What I think, in short."
+          "text": "What I think, in short.",
+          "lines": [
+            2,
+            3
+          ]
         },
         {
           "kind": "heading",
           "level": 2,
           "text": "Across topics",
-          "anchor": "Across topics"
+          "anchor": "Across topics",
+          "lines": [
+            4,
+            5
+          ]
         },
         {
           "kind": "positions",
           "ids": [
             "Positions#1"
+          ],
+          "lines": [
+            5,
+            6
           ]
         },
         {
           "kind": "heading",
           "level": 2,
           "text": "By topic",
-          "anchor": "By topic"
+          "anchor": "By topic",
+          "lines": [
+            7,
+            8
+          ]
         },
         {
           "kind": "heading",
           "level": 3,
           "text": "Printing press",
-          "anchor": "Printing press"
+          "anchor": "Printing press",
+          "lines": [
+            9,
+            10
+          ]
         },
         {
           "kind": "embed",
           "note": "Printing press",
-          "anchor": "My position"
+          "anchor": "My position",
+          "lines": [
+            10,
+            11
+          ]
         }
       ],
       "brief": null,
+      "inbox": null,
       "id": "Positions",
       "path": "Positions.md",
       "type": "positions",
@@ -461,6 +645,7 @@
       ],
       "backlinks": [
         "2026-10-20 Printing press",
+        "2026-10-23 2110 discuss Printing press",
         "Home",
         "Positions",
         "Spread of print"
@@ -482,51 +667,87 @@
           "kind": "heading",
           "level": 2,
           "text": "My position",
-          "anchor": "My position"
+          "anchor": "My position",
+          "lines": [
+            5,
+            6
+          ]
         },
         {
           "kind": "positions",
           "ids": [
             "Printing press#1",
             "Printing press#2"
+          ],
+          "lines": [
+            6,
+            8
           ]
         },
         {
           "kind": "heading",
           "level": 2,
           "text": "1. How print spread",
-          "anchor": "1. How print spread"
+          "anchor": "1. How print spread",
+          "lines": [
+            9,
+            10
+          ]
         },
         {
           "kind": "paragraph",
-          "text": "Within fifty years of the [Gutenberg Bible](arestoteles://note/Gutenberg%20Bible), presses ran in more than 250 European towns (Druckorte). Print followed trade routes, not borders."
+          "text": "Within fifty years of the [Gutenberg Bible](arestoteles://note/Gutenberg%20Bible), presses ran in more than 250 European towns (Druckorte). Print followed trade routes, not borders.",
+          "lines": [
+            10,
+            11
+          ]
         },
         {
           "kind": "section_link",
-          "note": "Spread of print"
+          "note": "Spread of print",
+          "lines": [
+            11,
+            12
+          ]
         },
         {
           "kind": "heading",
           "level": 2,
           "text": "2. Print and the Reformation",
-          "anchor": "2. Print and the Reformation"
+          "anchor": "2. Print and the Reformation",
+          "lines": [
+            13,
+            14
+          ]
         },
         {
           "kind": "paragraph",
-          "text": "Luther's pamphlets were cheap, short and in German, and printers reprinted whatever sold: see [Information wants to be cheap](arestoteles://note/Information%20wants%20to%20be%20cheap) and [Did print cause the Reformation](arestoteles://note/Did%20print%20cause%20the%20Reformation)."
+          "text": "Luther's pamphlets were cheap, short and in German, and printers reprinted whatever sold: see [Information wants to be cheap](arestoteles://note/Information%20wants%20to%20be%20cheap) and [Did print cause the Reformation](arestoteles://note/Did%20print%20cause%20the%20Reformation).",
+          "lines": [
+            14,
+            15
+          ]
         },
         {
           "kind": "callout",
           "style": "claude",
           "title": "A rival view",
           "text": "Elizabeth Eisenstein (*The Printing Press as an Agent of Change*, 1979) gives the press the leading role; Andrew Pettegree argues that pamphlets mattered more than books.",
-          "index": 0
+          "index": 0,
+          "lines": [
+            16,
+            18
+          ]
         },
         {
           "kind": "heading",
           "level": 2,
           "text": "How my view changed",
-          "anchor": "How my view changed"
+          "anchor": "How my view changed",
+          "lines": [
+            19,
+            20
+          ]
         },
         {
           "kind": "list",
@@ -534,15 +755,27 @@
           "items": [
             {
               "text": "**2026-10-20, position 1:** I thought: Print caused the Reformation. What changed it: Earlier reformers failed without a press, but the press alone convinced nobody.",
-              "depth": 0
+              "depth": 0,
+              "lines": [
+                20,
+                21
+              ]
             }
+          ],
+          "lines": [
+            20,
+            21
           ]
         },
         {
           "kind": "heading",
           "level": 2,
           "text": "Sources",
-          "anchor": "Sources"
+          "anchor": "Sources",
+          "lines": [
+            22,
+            23
+          ]
         },
         {
           "kind": "list",
@@ -550,12 +783,24 @@
           "items": [
             {
               "text": "[Printing press, Wikipedia](https://en.wikipedia.org/wiki/Printing_press)",
-              "depth": 0
+              "depth": 0,
+              "lines": [
+                23,
+                24
+              ]
             },
             {
               "text": "Andrew Pettegree, *Brand Luther*, 2015",
-              "depth": 0
+              "depth": 0,
+              "lines": [
+                24,
+                25
+              ]
             }
+          ],
+          "lines": [
+            23,
+            25
           ]
         }
       ],
@@ -605,6 +850,7 @@
           "Did print cause the Reformation"
         ]
       },
+      "inbox": null,
       "id": "Printing press",
       "path": "Topics/Printing press/Printing press.md",
       "type": "topic",
@@ -641,13 +887,21 @@
       "blocks": [
         {
           "kind": "paragraph",
-          "text": "Began with [Martin Luther](arestoteles://note/Martin%20Luther)'s theses in 1517 and ended with the Peace of Westphalia (Westfälischer Frieden) in 1648."
+          "text": "Began with [Martin Luther](arestoteles://note/Martin%20Luther)'s theses in 1517 and ended with the Peace of Westphalia (Westfälischer Frieden) in 1648.",
+          "lines": [
+            2,
+            3
+          ]
         },
         {
           "kind": "heading",
           "level": 2,
           "text": "Mechanisms at work",
-          "anchor": "Mechanisms at work"
+          "anchor": "Mechanisms at work",
+          "lines": [
+            4,
+            5
+          ]
         },
         {
           "kind": "list",
@@ -655,12 +909,21 @@
           "items": [
             {
               "text": "[Information wants to be cheap](arestoteles://note/Information%20wants%20to%20be%20cheap): pamphlets outsold books",
-              "depth": 0
+              "depth": 0,
+              "lines": [
+                5,
+                6
+              ]
             }
+          ],
+          "lines": [
+            5,
+            6
           ]
         }
       ],
       "brief": null,
+      "inbox": null,
       "id": "Reformation",
       "path": "Library/Events/Reformation.md",
       "type": "event",
@@ -699,24 +962,40 @@
       "blocks": [
         {
           "kind": "paragraph",
-          "text": "*Part of [Printing press](arestoteles://note/Printing%20press), section 1.*"
+          "text": "*Part of [Printing press](arestoteles://note/Printing%20press), section 1.*",
+          "lines": [
+            5,
+            6
+          ]
         },
         {
           "kind": "heading",
           "level": 2,
           "text": "Trade routes, not borders",
-          "anchor": "Trade routes, not borders"
+          "anchor": "Trade routes, not borders",
+          "lines": [
+            7,
+            8
+          ]
         },
         {
           "kind": "paragraph",
-          "text": "Printers went where paper, money and readers were: the trading cities (Handelsstädte) of the Rhine and northern Italy."
+          "text": "Printers went where paper, money and readers were: the trading cities (Handelsstädte) of the Rhine and northern Italy.",
+          "lines": [
+            8,
+            9
+          ]
         },
         {
           "kind": "callout",
           "style": "shaky",
           "title": null,
           "text": "The figure of 20 million books by 1500 is an estimate; ranges in the literature go from 8 to 20 million.",
-          "index": 0
+          "index": 0,
+          "lines": [
+            10,
+            12
+          ]
         },
         {
           "kind": "table",
@@ -737,10 +1016,15 @@
               "Lyon",
               "1473"
             ]
+          ],
+          "lines": [
+            13,
+            18
           ]
         }
       ],
       "brief": null,
+      "inbox": null,
       "id": "Spread of print",
       "path": "Topics/Printing press/Spread of print.md",
       "type": "topic",

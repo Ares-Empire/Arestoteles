@@ -6,6 +6,7 @@ from __future__ import annotations
 import re
 import shutil
 import time
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -18,6 +19,7 @@ from arestoteles.inline import Resolver
 from arestoteles.models import Vault
 
 from conftest import APP, World
+from linecheck import check_note, problems
 
 REAL = Path.home() / "Documents" / "Patrik Breeck" / "Weltbild"
 LINK = re.compile(r"!?\[\[([^\[\]\n]+?)\]\]")
@@ -123,6 +125,22 @@ def test_real_vault_builds(setup, copy):
           f"targets), 0 lost; {len(built.duplicates)} duplicate names")
     print(f"REAL VAULT: build {build_ms:.0f} ms, GET /vault {request_ms:.0f} ms, {len(answer.content) // 1024} KB; "
           f"vault check {len(result.errors)} errors, {len(result.warnings)} warnings")
+
+
+def test_real_vault_lines_round_trip(setup):
+    """Every block and list item of every note: its lines lie in the source body, put back unchanged they give the
+    identical body, and read again on their own they give the same block (tests/linecheck.py). Counts only."""
+    world, service, _ = setup
+    built = service.current()
+    resolve = Resolver(built.paths)
+    counts: Counter = Counter()
+    for n in built.vault["notes"]:
+        counts += check_note(n, service.source(n["id"])["markdown"], resolve)
+    found = problems(counts)   # keys are the check's own words, never vault content
+    print(f"\nREAL VAULT: lines of {counts['blocks']} blocks and {counts['items']} list items checked; problems: "
+          + (", ".join(f"{key} {value}" for key, value in sorted(found.items())) or "none"))
+    assert counts["blocks"] > 0
+    assert sum(found.values()) == 0
 
 
 def test_real_vault_edits_on_the_copy(setup, copy):

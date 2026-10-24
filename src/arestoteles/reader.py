@@ -4,6 +4,10 @@ markdown-it-py gives the CommonMark block structure (headings, paragraphs, lists
 are added here: callouts and their titles, the summary box, embeds, `→ [[…]]` section links, the positions list,
 "How my view changed", the part-of line, the glossary table and Home's "To learn about next". Text fields are the
 author's inline source with links turned into note URLs (inline.to_text).
+
+Every block (and list item) carries `lines`: where it sits in the body (the file without its frontmatter, what
+`GET /notes/{id}/source` serves), as [start, end) of `body.split("\n")`, without the blank lines after it. markdown-it
+counts lines in that same body, so its token maps are used as they are.
 """
 
 from __future__ import annotations
@@ -95,9 +99,11 @@ def _close(tokens: list[Token], i: int) -> int:
 class _Body:
     """Walks one note's tokens and fills `Parsed`."""
 
-    def __init__(self, parsed: Parsed, note_id: str, resolve: Resolver, positions_title: str):
+    def __init__(self, parsed: Parsed, note_id: str, resolve: Resolver, positions_title: str,
+                 lines: list[str] | None):
         self.p, self.id, self.resolve = parsed, note_id, resolve
         self.positions_title = positions_title
+        self.lines = lines                       # the body's lines; None when they cannot be given
         self.blocks: list[dict] = parsed.note["blocks"]
         self.section: str | None = None          # the current `##` title
         self.numbered: dict | None = None        # the current numbered section (for the brief)
@@ -108,16 +114,28 @@ class _Body:
     def text(self, source: str) -> str:
         return to_text(source, self.resolve, self.id)
 
+    def span(self, start: int | None, end: int | None) -> list[int] | None:
+        """[start, end) in the body's lines without the blank lines at its end (markdown-it counts them into lists)."""
+        if self.lines is None or start is None or end is None:
+            return None
+        end = min(end, len(self.lines))
+        while end > start + 1 and not self.lines[end - 1].strip(" \t"):
+            end -= 1
+        return [start, end] if start < end else None
+
+    def where(self, token: Token) -> list[int] | None:
+        return self.span(*token.map) if token.map else None
+
     # ── blocks ──
     def walk(self, tokens: list[Token]) -> None:
         i = 0
         while i < len(tokens):
             t = tokens[i]
             if t.type == "heading_open":
-                self.heading(int(t.tag[1]), tokens[i + 1].content)
+                self.heading(int(t.tag[1]), tokens[i + 1].content, self.where(t))
                 i += 3
             elif t.type == "paragraph_open":
-                self.paragraph(tokens[i + 1].content)
+                self.paragraph(tokens[i + 1].content, t.map)
                 i += 3
             elif t.type in ("bullet_list_open", "ordered_list_open"):
                 j = _close(tokens, i)
@@ -125,26 +143,26 @@ class _Body:
                 i = j + 1
             elif t.type == "blockquote_open":
                 j = _close(tokens, i)
-                self.quote(tokens[i + 1:j])
+                self.quote(tokens[i + 1:j], self.where(t))
                 i = j + 1
             elif t.type == "table_open":
                 j = _close(tokens, i)
                 self.table(tokens[i:j + 1])
                 i = j + 1
             elif t.type == "hr":
-                self.blocks.append({"kind": "rule"})
+                self.blocks.append({"kind": "rule", "lines": self.where(t)})
                 i += 1
             elif t.type in ("fence", "code_block"):
-                self.blocks.append({"kind": "paragraph", "text": _code(t.content)})
+                self.blocks.append({"kind": "paragraph", "text": _code(t.content), "lines": self.where(t)})
                 i += 1
             elif t.type == "html_block":
                 if not t.content.lstrip().startswith("<!--"):
-                    self.blocks.append({"kind": "paragraph", "text": self.text(t.content)})
+                    self.blocks.append({"kind": "paragraph", "text": self.text(t.content), "lines": self.where(t)})
                 i += 1
             else:
                 i += 1
 
-    def heading(self, level: int, source: str) -> None:
+    def heading(self, level: int, source: str, lines: list[int] | None) -> None:
         if level == 1 and self.title is None:
             self.title = plain(source) or None
             return
@@ -156,58 +174,73 @@ class _Body:
                 self.numbered = {"title": plain(m[2]), "summary": None, "note": None}
                 self.p.sections.append(self.numbered)
         self.blocks.append({"kind": "heading", "level": min(max(level, 2), 4), "text": self.text(source),
-                            "anchor": plain(source)})
+                            "anchor": plain(source), "lines": lines})
 
-    def paragraph(self, source: str) -> None:
+    def paragraph(self, source: str, where: list[int] | None) -> None:
+        """One CommonMark paragraph: embed and `→ [[…]]` lines become blocks of their own, the rest paragraphs."""
+        rows = source.split("\n")
+        first = where[0] if where and len(rows) == where[1] - where[0] else None   # one source line per row
         lines: list[str] = []
+        start = 0
 
-        def flush() -> None:
+        def at(begin: int, end: int) -> list[int] | None:
+            return self.span(first + begin, first + end) if first is not None else None
+
+        def flush(end: int) -> None:
             if lines:
                 value = self.text("\n".join(lines))
-                self.blocks.append({"kind": "paragraph", "text": value})
+                self.blocks.append({"kind": "paragraph", "text": value, "lines": at(start, end)})
                 if self.numbered is not None and self.numbered["summary"] is None:
                     self.numbered["summary"] = value
                 lines.clear()
 
-        for line in source.split("\n"):
+        for row, line in enumerate(rows):
             stripped = line.strip()
             embed = EMBED_LINE.fullmatch(stripped)
             if embed:
                 wl = parse_link(embed[1], embed=True)
                 note = self.resolve(wl.target) if wl.target else None
                 if note:
-                    flush()
-                    self.blocks.append({"kind": "embed", "note": note, "anchor": wl.anchor})
+                    flush(row)
+                    self.blocks.append({"kind": "embed", "note": note, "anchor": wl.anchor, "lines": at(row, row + 1)})
                     self.p.embeds.append((note, wl.anchor))
                     continue
             if ARROW_LINE.fullmatch(stripped):
                 notes = [self.resolve(wl.target) for wl in find_links(stripped)]
                 if notes and all(notes):
-                    flush()
-                    for note in notes:
-                        self.blocks.append({"kind": "section_link", "note": note})
+                    flush(row)
+                    for note in notes:   # one line, so its links share the line's range
+                        self.blocks.append({"kind": "section_link", "note": note, "lines": at(row, row + 1)})
                         if self.numbered is not None and self.numbered["note"] is None:
                             self.numbered["note"] = note
                     continue
+            if not lines:
+                start = row
             lines.append(line)
-        flush()
+        flush(len(rows))
 
     def list(self, tokens: list[Token]) -> None:
+        where = self.where(tokens[0])
         if (tokens[0].type == "ordered_list_open" and not self.positions_done
                 and self.section == self.positions_title):
             self.positions_done = True
-            self.blocks.append({"kind": "positions", "ids": [p["id"] for p in self.p.positions]})
+            self.blocks.append({"kind": "positions", "ids": [p["id"] for p in self.p.positions], "lines": where})
             return
-        items = [{"text": self.text(source), "depth": depth} for source, depth in _items(tokens)]
-        self.blocks.append({"kind": "list", "ordered": tokens[0].type == "ordered_list_open", "items": items})
+        entries = _items(tokens)
+        # an item runs from its marker line to the next item (a nested one included) or the end of the list
+        ends = [start for _, _, start in entries[1:]] + [tokens[0].map[1] if tokens[0].map else None]
+        items = [{"text": self.text(source), "depth": depth, "lines": self.span(start, end)}
+                 for (source, depth, start), end in zip(entries, ends)]
+        self.blocks.append({"kind": "list", "ordered": tokens[0].type == "ordered_list_open", "items": items,
+                            "lines": where})
         if self.section == LEARN_NEXT and self.p.note["type"] == "home":
             self.p.learn_next.extend(item["text"] for item in items if item["depth"] == 0)
 
-    def quote(self, inner: list[Token]) -> None:
+    def quote(self, inner: list[Token], lines: list[int] | None) -> None:
         first = inner[1].content if len(inner) > 1 and inner[0].type == "paragraph_open" else None
         m = CALLOUT.match(first.split("\n", 1)[0]) if first is not None else None
         if m is None:
-            self.blocks.append({"kind": "quote", "text": self._inner_text(inner, None)})
+            self.blocks.append({"kind": "quote", "text": self._inner_text(inner, None), "lines": lines})
             return
         kind, title = m[1].lower(), m[2].strip()
         rest = first.split("\n", 1)[1] if "\n" in first else ""
@@ -222,7 +255,7 @@ class _Body:
             index = len(callouts)
             callouts.append({"index": index, "style": style, "title": plain(title) or None, "text": body})
         self.blocks.append({"kind": "callout", "style": style, "title": self.text(title) if title else None,
-                            "text": body, "index": index})
+                            "text": body, "index": index, "lines": lines})
 
     def _inner_text(self, inner: list[Token], first_rest: str | None) -> str:
         """A quote's or callout's content as one Text: paragraphs apart by a blank line, list items as lines."""
@@ -239,7 +272,7 @@ class _Body:
                 j = _close(inner, i)
                 ordered = t.type == "ordered_list_open"
                 lines = [("  " * depth) + (f"{n}. " if ordered and depth == 0 else "• ") + self.text(source)
-                         for n, (source, depth) in enumerate(_items(inner[i:j + 1]), start=1)]
+                         for n, (source, depth, _) in enumerate(_items(inner[i:j + 1]), start=1)]
                 parts.append("\n".join(lines))
                 i = j + 1
             elif t.type in ("blockquote_open", "table_open"):
@@ -265,22 +298,22 @@ class _Body:
                 sources[-1].append(t.content)
         if not rows:
             return
-        self.blocks.append({"kind": "table", "header": rows[0], "rows": rows[1:]})
+        self.blocks.append({"kind": "table", "header": rows[0], "rows": rows[1:], "lines": self.where(tokens[0])})
         if self.p.note["type"] == "glossary" and not self.p.terms:
             self.p.terms = _terms(sources, self.resolve)
 
 
-def _items(tokens: list[Token]) -> list[tuple[str, int]]:
-    """A list's items in order as (inline source, depth), nested lists flattened."""
-    out: list[tuple[str, int]] = []
+def _items(tokens: list[Token]) -> list[tuple[str, int, int | None]]:
+    """A list's items in order as (inline source, depth, marker line), nested lists flattened."""
+    out: list[tuple[str, int, int | None]] = []
     base = tokens[0].level
     for t in tokens:
         if t.type == "list_item_open":
-            out.append(("", (t.level - base - 1) // 2))
+            out.append(("", (t.level - base - 1) // 2, t.map[0] if t.map else None))
         elif t.type == "inline" and out:
             # the latest item's paragraphs (a nested list's items open their own entry first)
-            source, depth = out[-1]
-            out[-1] = (source + "\n" + t.content if source else t.content, depth)
+            source, depth, start = out[-1]
+            out[-1] = (source + "\n" + t.content if source else t.content, depth, start)
     return out
 
 
@@ -339,6 +372,7 @@ def read(path: str, raw: bytes, resolve: Resolver) -> Parsed:
         "led_to": _led_to(fm.get("led_to"), resolve),
         "links": resolved_ids(links, resolve, exclude=note_id),
         "backlinks": [], "positions": [], "callouts": [], "blocks": [], "brief": None,
+        "inbox": _inbox(fm, resolve) if kind == "inbox" else None,
         "version": notefile.blob_hash(raw),
     }
     parsed = Parsed(note=note, unresolved=sorted({wl.target for wl in links if wl.target and resolve(wl.target) is None}))
@@ -353,13 +387,39 @@ def read(path: str, raw: bytes, resolve: Resolver) -> Parsed:
         if target:
             note["part_of"] = {"note": target, "section": int(part_of[2])}
 
-    walker = _Body(parsed, note_id, resolve, pos.ACROSS_TOPICS if kind == "positions" else pos.MY_POSITION)
+    # markdown-it also breaks lines at a lone "\r", str.split("\n") does not: then no block gets lines
+    walker = _Body(parsed, note_id, resolve, pos.ACROSS_TOPICS if kind == "positions" else pos.MY_POSITION,
+                   None if "\r" in body else lines)
     walker.walk(_md.parse(body))
     note["title"] = walker.title or note_id
     note["summary"] = walker.summary
     for section in parsed.sections:
         section["summary"] = section["summary"] or ""
     return parsed
+
+
+def _inbox(fm: dict, resolve: Resolver) -> dict:
+    """An Inbox note's state: `status` (new until processed), `kind` (a note, or a "discuss later" mark) and what it
+    is about (`about: "[[Note]]"`, or `"[[Note#My position]]"` with `position: N`)."""
+    status, position = fm.get("status"), fm.get("position")
+    about = _about(fm.get("about"), resolve)
+    return {
+        "status": status.strip() if isinstance(status, str) and status.strip() else "new",
+        "kind": "discuss" if fm.get("kind") == "discuss" else "note",
+        "about": about,
+        "position": (position if about is not None and isinstance(position, int) and not isinstance(position, bool)
+                     and position > 0 else None),
+    }
+
+
+def _about(value: object, resolve: Resolver) -> str | None:
+    for item in _strings(value):   # YAML reads an unquoted [[X]] as a nested list
+        links = find_links(item)
+        for target in [wl.target for wl in links] if links else [parse_link(item).target]:
+            note = resolve(target) if target else None
+            if note:
+                return note
+    return None
 
 
 def _positions(lines: list[str], note_id: str, resolve: Resolver, across: bool) -> list[dict]:

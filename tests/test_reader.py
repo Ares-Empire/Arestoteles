@@ -99,21 +99,26 @@ code line
     kinds = [b["kind"] for b in n["blocks"]]
     assert kinds == ["paragraph", "heading", "heading", "list", "callout", "callout", "callout", "quote", "rule",
                      "embed", "paragraph", "section_link", "section_link", "paragraph", "paragraph"]
+    # where each block sits in the body (title and summary box are lines 0 to 4, left out of the blocks)
+    assert [b["lines"] for b in n["blocks"]] == [
+        [6, 8], [9, 10], [10, 11], [12, 15], [16, 21], [22, 24], [25, 27], [28, 29], [30, 31],
+        [32, 33], [33, 34], [34, 35], [34, 35], [35, 36], [37, 40]]
     assert n["blocks"][0]["text"] == "Intro with a soft\nbreak."
     assert [b["level"] for b in n["blocks"][1:3]] == [3, 4]
-    assert n["blocks"][3] == {"kind": "list", "ordered": True, "items": [
-        {"text": "first", "depth": 0}, {"text": "nested", "depth": 1}, {"text": "second", "depth": 0}]}
+    assert n["blocks"][3] == {"kind": "list", "ordered": True, "lines": [12, 15], "items": [
+        {"text": "first", "depth": 0, "lines": [12, 13]}, {"text": "nested", "depth": 1, "lines": [13, 14]},
+        {"text": "second", "depth": 0, "lines": [14, 15]}]}
     assert n["blocks"][4] == {"kind": "callout", "style": "claude", "title": "Suggested link",
                               "text": "Text of the callout.\n\n• a point\n• [Printing press](arestoteles://note/"
-                                      "Printing%20press)", "index": 0}
+                                      "Printing%20press)", "index": 0, "lines": [16, 21]}
     assert n["blocks"][5]["title"] is None and n["blocks"][5]["index"] == 1
     assert n["blocks"][6] == {"kind": "callout", "style": "note", "title": "Other", "text": "Not Claude's.",
-                              "index": -1}
+                              "index": -1, "lines": [25, 27]}
     assert [c["style"] for c in n["callouts"]] == ["claude", "shaky"]
-    assert n["blocks"][9] == {"kind": "embed", "note": "Spread of print", "anchor": "Trade routes"}
-    assert n["blocks"][10] == {"kind": "paragraph", "text": "Missing note"}
-    assert n["blocks"][13] == {"kind": "paragraph", "text": "→ Not written"}
-    assert n["blocks"][14] == {"kind": "paragraph", "text": "`code line`"}
+    assert n["blocks"][9] == {"kind": "embed", "note": "Spread of print", "anchor": "Trade routes", "lines": [32, 33]}
+    assert n["blocks"][10] == {"kind": "paragraph", "text": "Missing note", "lines": [33, 34]}
+    assert n["blocks"][13] == {"kind": "paragraph", "text": "→ Not written", "lines": [35, 36]}
+    assert n["blocks"][14] == {"kind": "paragraph", "text": "`code line`", "lines": [37, 40]}
     assert p.unresolved == ["Missing note", "Not written"]
 
 
@@ -143,7 +148,7 @@ Intro line.
         "Second view, with more words.", True, ["Spread of print"])
     assert (third["text"], third["evidence"], third["history"]) == ("No links.", [], [])
     assert p.note["positions"] == ["Topic#1", "Topic#2", "Topic#3"]
-    assert {"kind": "positions", "ids": ["Topic#1", "Topic#2", "Topic#3"]} in p.note["blocks"]
+    assert {"kind": "positions", "ids": ["Topic#1", "Topic#2", "Topic#3"], "lines": [7, 10]} in p.note["blocks"]
 
 
 def test_frontmatter_fields():
@@ -182,3 +187,20 @@ def test_part_of_and_callout_spans():
     assert p.note["part_of"] == {"note": "Printing press", "section": 2}
     body = "*Part of [[Printing press]], section 2.*\n\n> [!shaky]\n> One.\n\n> [!note]\n> skip\n\n> [!claude] T\n> Two\n"
     assert callout_spans(body) == [(2, 4), (8, 10)]
+
+
+def test_inbox_state():
+    def inbox(frontmatter: str) -> dict | None:
+        return read("Inbox/x.md", f"---\n{frontmatter}\n---\ntext\n".encode(), Resolver([*IDS, "Positions", "x"])
+                    ).note["inbox"]
+
+    assert inbox("type: inbox\nstatus: new") == {"status": "new", "kind": "note", "about": None, "position": None}
+    assert inbox('type: inbox\nstatus: processed\nkind: discuss\nabout: "[[printing press#My position]]"\n'
+                 "position: 2") == {"status": "processed", "kind": "discuss", "about": "Printing press", "position": 2}
+    assert inbox("type: inbox\nabout: [[Spread of print]]")["about"] == "Spread of print"   # YAML: a nested list
+    assert inbox("type: inbox\nabout: Positions#Across topics\nposition: 1")["about"] == "Positions"
+    assert inbox('type: inbox\nabout: "[[Not written]]"\nposition: 1') == {
+        "status": "new", "kind": "note", "about": None, "position": None}   # no position without its note
+    assert inbox('type: inbox\nkind: later\nabout: "[[Spread of print]]"\nposition: true') == {
+        "status": "new", "kind": "note", "about": "Spread of print", "position": None}
+    assert note("# M\n").note["inbox"] is None

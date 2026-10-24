@@ -113,7 +113,7 @@ def test_health_needs_no_login(client, service):
     service.sync()
     health = client.get(BASE + "/health").json()
     assert health == {"ok": True, "commit": service.repo.head(short=True), "pulled": "2026-10-24T16:05:00Z",
-                      "pushed": True, "notes": 12}
+                      "pushed": True, "notes": 13}
 
 
 def test_health_turns_false_when_pulls_fail_for_ten_minutes(client, world, service):

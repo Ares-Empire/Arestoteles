@@ -84,14 +84,21 @@ EDIT = TypeAdapter(Edit)
 
 
 # ── answers ──
-class Heading(_Strict):
+Lines = Optional[tuple[int, int]]   # [start, end) in the note's source body; null for blocks the server makes up
+
+
+class _Block(_Strict):
+    lines: Lines
+
+
+class Heading(_Block):
     kind: Literal["heading"]
     level: Literal[2, 3, 4]
     text: str
     anchor: str
 
 
-class Paragraph(_Strict):
+class Paragraph(_Block):
     kind: Literal["paragraph"]
     text: str
 
@@ -99,20 +106,21 @@ class Paragraph(_Strict):
 class ListItem(_Strict):
     text: str
     depth: int
+    lines: Lines
 
 
-class ListBlock(_Strict):
+class ListBlock(_Block):
     kind: Literal["list"]
     ordered: bool
     items: list[ListItem]
 
 
-class PositionsBlock(_Strict):
+class PositionsBlock(_Block):
     kind: Literal["positions"]
     ids: list[str]
 
 
-class CalloutBlock(_Strict):
+class CalloutBlock(_Block):
     kind: Literal["callout"]
     style: Literal["claude", "shaky", "note"]
     title: Optional[str]
@@ -120,29 +128,29 @@ class CalloutBlock(_Strict):
     index: int
 
 
-class Quote(_Strict):
+class Quote(_Block):
     kind: Literal["quote"]
     text: str
 
 
-class Embed(_Strict):
+class Embed(_Block):
     kind: Literal["embed"]
     note: str
     anchor: Optional[str]
 
 
-class Table(_Strict):
+class Table(_Block):
     kind: Literal["table"]
     header: list[str]
     rows: list[list[str]]
 
 
-class SectionLink(_Strict):
+class SectionLink(_Block):
     kind: Literal["section_link"]
     note: str
 
 
-class Rule(_Strict):
+class Rule(_Block):
     kind: Literal["rule"]
 
 
@@ -189,6 +197,13 @@ class Brief(_Strict):
     questions: list[str]
 
 
+class Inbox(_Strict):
+    status: str
+    kind: Literal["note", "discuss"]
+    about: Optional[str]
+    position: Optional[int]
+
+
 class PartOf(_Strict):
     note: str
     section: int
@@ -221,6 +236,7 @@ class Note(_Strict):
     callouts: list[Callout]
     blocks: list[Block]
     brief: Optional[Brief]
+    inbox: Optional[Inbox]
     version: str
 
 
