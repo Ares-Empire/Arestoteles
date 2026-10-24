@@ -72,13 +72,22 @@ interface Note {
   callouts: Callout[];            // the note's "> [!claude]" and "> [!shaky]" callouts, in order (summary boxes excluded)
   blocks: Block[];                // the body for display (frontmatter, the title and the summary box left out)
   brief: Brief | null;            // topic overviews only
+  inbox: Inbox | null;            // CONTRACT ADDITION (2026-10-24, lookup): Inbox notes only
   version: string;                // git blob hash of the file: edits of the text name it
 }
 
-type Block =
+// CONTRACT ADDITION (2026-10-24, lookup): an Inbox note's state, from its frontmatter.
+interface Inbox {
+  status: string;                 // `status`: "new" until processed, then "processed" ("new" when missing)
+  kind: "note" | "discuss";       // "discuss": a "discuss later" mark (`kind: discuss`), else a note
+  about: string | null;           // `about: "[[Note]]"` (or "[[Note#My position]]") resolved to a note id
+  position: number | null;        // `position: N`: the position of `about` it is about ("<about>#<N>")
+}                                 // The `about` link counts in `links` and `backlinks`, as in Obsidian.
+
+type Block = (
   | { kind: "heading"; level: 2 | 3 | 4; text: Text; anchor: string }   // anchor: the heading text, as Obsidian links it
   | { kind: "paragraph"; text: Text }
-  | { kind: "list"; ordered: boolean; items: { text: Text; depth: number }[] }   // depth 0 = top level
+  | { kind: "list"; ordered: boolean; items: { text: Text; depth: number; lines: Lines }[] }   // depth 0 = top level
   | { kind: "positions"; ids: string[] }          // the "## My position" list: the app shows position cards here
   | { kind: "callout"; style: "claude" | "shaky" | "note"; title: Text | null; text: Text; index: number }
                                                   // index: position in Note.callouts; other callout types → "note"
@@ -86,7 +95,21 @@ type Block =
   | { kind: "embed"; note: string; anchor: string | null }   // ![[Note#Heading]]: the app shows that part
   | { kind: "table"; header: Text[]; rows: Text[][] }
   | { kind: "section_link"; note: string }        // a "→ [[Section page]]" line on its own
-  | { kind: "rule" };
+  | { kind: "rule" }
+) & { lines: Lines };
+
+// CONTRACT ADDITION (2026-10-24, lookup): where a block (or list item) sits in the note's source, so the app can
+// edit exactly that paragraph or list item. [start, end): 0-based line numbers, end exclusive, in the `markdown` of
+// GET /notes/{id}/source split at "\n" (that body still has the title line and the summary box that `blocks` leave
+// out). The lines are the raw Markdown (list markers, "> " and indentation included); the range has no blank lines at
+// its ends. A list item runs from its marker line to the next item (a nested
+// item has its own range) or the end of the list. Blocks from one line share it (a "→ [[A]], [[B]]" line gives two
+// section links). null only for blocks the server makes up (none today) and for a note whose text has a lone
+// carriage return (where line counts would differ).
+// To edit a block: fetch the source, check its `version` is the note's (else reload the vault: the lines belong to
+// that version), replace lines[start..<end] with the new text's lines, join with "\n", send `edit_note` with that
+// version (a file changed since answers 409 as always).
+type Lines = [number, number] | null;
 
 // Text: inline Markdown the app renders with AttributedString(markdown:): **bold**, *italic*, `code`, and links.
 // [[Note]], [[Note|alias]] and [[Note#Heading]] become [shown text](arestoteles://note/<id>#<anchor>) (id and anchor
@@ -139,7 +162,13 @@ type Edit =
         // Patrik agrees: the callout's text becomes a normal paragraph in its place (vault voice rule 2)
   | { op: "dismiss_callout"; note: string; callout: number; version: string }
   | { op: "edit_note"; note: string; version: string; markdown: string }   // the free editor: the whole body
-  | { op: "quick_note"; text: string };                          // a new Inbox note, status new, verbatim
+  | { op: "quick_note"; text: string; about?: string | null; kind?: "note" | "discuss" }
+        // a new Inbox note, status new, verbatim
+        // CONTRACT ADDITION (2026-10-24, lookup): `about` (optional) is a note id or a position id "<note>#<n>";
+        // `kind` (optional, default "note"): "discuss" is a "discuss later" mark, whose `text` may be empty when it
+        // has an `about`
+  | { op: "set_inbox_status"; note: string; status: "new" | "processed" };
+        // CONTRACT ADDITION (2026-10-24, lookup): sets an Inbox note's `status` (the app ticks off a discussed mark)
 
 interface EditResult {
   vault: Vault;                   // rebuilt after the edit
@@ -164,6 +193,17 @@ Rules every edit follows (they are the vault's own, `CLAUDE.md` there):
   `![[<Topic>#My position]]` under `## By topic` on Positions.md (`changed` then lists both notes).
 - Every edit sets the note's `updated` to today; `quick_note` creates `Inbox/YYYY-MM-DD HHMM <first words>.md` with
   `type: inbox`, `status: new`, `created`, the text verbatim (it is raw input, never rewritten).
+  CONTRACT ADDITION (2026-10-24, lookup): with `kind: "discuss"` the frontmatter adds `kind: discuss`; with `about`
+  a note, `about: "[[<note>]]"`; with `about` a position, `about: "[[<note>#My position]]"` (`#Across topics` for
+  Positions.md) and `position: <n>`. A discuss mark without text is named `… HHMM discuss <note title>.md` and has an
+  empty body. `422` when the text is empty (for a discuss mark: when it has no `about` either), `404` for an unknown
+  note or a note without positions, `409` (with `current`) for a position that no longer exists. The commit message is
+  `App: discuss later (<name>)` for a mark. `set_inbox_status` answers `422` for a note that is not an Inbox note;
+  the same status again changes nothing.
+- CONTRACT ADDITION (2026-10-24, lookup): `drop_position` also updates the Inbox notes about that note's positions,
+  as it does the history entries: a note about the dropped position loses its `position` (it stays about the note),
+  notes about later positions move up by one (each gets `updated`); `changed` then lists them after the note. The
+  Inbox note's text is never touched.
 - **Versions:** an edit naming `version` fails with `409 {"error", "current": Note}` when the file changed since. Position
   edits find their position by id; when it no longer exists the answer is `409` too.
 - A vault check *error* after an edit undoes it (`422`, the errors in `error`); *warnings* are returned, the edit stays.
@@ -189,3 +229,5 @@ The vault check's own warning lines, all vault content (titles, text, glossary),
 
 `docs/samples/vault.json` (a small made-up vault, never Patrik's notes), `docs/samples/note-source.json`,
 `docs/samples/edit-result.json`: used by the app's tests and sample mode. Keep them valid when the contract changes.
+Since the lookup additions every block and list item has `lines`, every note `inbox`, and the vault has one "discuss
+later" mark (`2026-10-23 2110 discuss Printing press`, about `Printing press#1`, no text).

@@ -26,7 +26,7 @@ src/arestoteles/
   service.py    state, sync loop, edit flow       api.py       routes        auth.py  Empire login
   texts.py      English + German sentences        models.py    the contract as pydantic models
   config.py     settings from the environment     main.py      start
-tests/   fixtures/vault/ (made up)   deploy/ (unit, Aresync hook, install steps)
+tests/   fixtures/vault/ (made up)   linecheck.py (the Block.lines proof)   deploy/ (unit, Aresync hook, install)
 ```
 
 ## Rules
@@ -36,7 +36,11 @@ tests/   fixtures/vault/ (made up)   deploy/ (unit, Aresync hook, install steps)
   temporary copy and prints and asserts counts only. The fixture vault and the samples are made up.
 - Edits follow the vault's rules and live in `edits.py` with tests: positions keep bold, numbering, `→` links and
   Positions.md's embeds; changed or dropped views go to "How my view changed" (with `, position N` so they attach to
-  their position); `updated` is set; quick notes are verbatim. The vault check's *new* errors undo an edit.
+  their position); `updated` is set; quick notes are verbatim (a "discuss later" mark or a note about a note or
+  position only adds `kind: discuss`, `about`, `position` to the frontmatter; a drop moves `position` with the list,
+  as it does the history). The vault check's *new* errors undo an edit.
+- Every block and list item carries `lines`, its range in the source body (the app edits one paragraph with it).
+  `tests/linecheck.py` proves the ranges on the fixture and (counts only) the real vault: keep it passing.
 - Everything that touches the clone runs under the service's lock; tests use a temporary bare remote, never GitHub.
 - Language: `~/ares-empire/docs/LANGUAGES.md`. All of the server's sentences are in `texts.py` (English and German);
   vault content and the check's own lines are never translated. Every answer sets `Content-Language`.

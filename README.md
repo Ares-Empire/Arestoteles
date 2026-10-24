@@ -7,9 +7,10 @@ lived here before is gone (git keeps its history).
 Two parts:
 
 - **The vault service** (`src/arestoteles/`): the server of the Arestoteles iPhone app. It keeps a clone of the
-  vault, pulls it every minute, builds the whole index (notes, positions with their history, links and backlinks,
-  glossary, a brief per topic) and applies the app's edits by the vault's own rules, checked with the vault's own
-  check, committed and pushed. Contract: [`docs/API.md`](docs/API.md), samples in `docs/samples/`.
+  vault, pulls it every minute, builds the whole index (notes with each block's place in the source, positions with
+  their history, links and backlinks, glossary, a brief per topic, Inbox notes and "discuss later" marks) and applies
+  the app's edits by the vault's own rules, checked with the vault's own check, committed and pushed. Contract:
+  [`docs/API.md`](docs/API.md), samples in `docs/samples/`.
 - **The website** arestoteles.de (`web/`, `webauth/`, the compose `web` service, `scripts/refresh_quotes.py`):
   unchanged, see [`docs/11-web-frontend.md`](docs/11-web-frontend.md).
 
