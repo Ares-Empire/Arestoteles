@@ -16,7 +16,8 @@ from pydantic import ValidationError
 from arestoteles import check
 from arestoteles.api import create_app
 from arestoteles.inline import Resolver
-from arestoteles.models import Vault
+from arestoteles.models import SearchAnswer, Vault
+from arestoteles.search import SearchIndex
 
 from conftest import APP, World
 from linecheck import check_note, problems
@@ -178,3 +179,31 @@ def test_real_vault_edits_on_the_copy(setup, copy):
     assert follows   # the mark on the dropped position stays on its note (a bool, so no name is ever shown)
     print(f"\nREAL VAULT (copy): {len(statuses)} edits applied, statuses {sorted(set(statuses))}, "
           f"{warnings} new check warnings from the Inbox edits")
+
+
+def test_real_vault_search(setup):
+    """Search over the real vault with the fake meaning model: every passage points at its block, the index builds
+    quickly, a query answers quickly. Counts and times only."""
+    world, service, _ = setup
+    built = service.current()
+    started = time.perf_counter()
+    index = SearchIndex.of(built)
+    index_ms = (time.perf_counter() - started) * 1000
+    misplaced = 0
+    for p in index.passages:
+        blocks = built.notes[p.note]["blocks"]
+        misplaced += not (0 <= p.block < len(blocks)) or (p.item is not None and blocks[p.block]["kind"] != "list")
+    assert misplaced == 0
+    assert len(index.passages) > 0
+    client = TestClient(create_app(service))
+    assert service.search.meaning
+    times = []
+    for query in ("the", "Wie viele", "why did it happen", "1900"):   # made-up queries, results never shown
+        started = time.perf_counter()
+        answer = client.get("/api/arestoteles/search", params={"q": query}, headers=APP)
+        times.append((time.perf_counter() - started) * 1000)
+        assert answer.status_code == 200
+        SearchAnswer.model_validate(answer.json())
+    assert index_ms < 1000 and max(times) < 300
+    print(f"\nREAL VAULT: {len(index.passages)} passages ({len(index.units)} texts with the sentences), search index "
+          f"built in {index_ms:.0f} ms, a query answered in {max(times):.0f} ms at most (fake meaning model)")

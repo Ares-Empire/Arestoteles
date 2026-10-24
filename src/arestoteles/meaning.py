@@ -302,10 +302,12 @@ def fetch(spec: ModelSpec, models: Path, out=sys.stdout, client=None) -> Path:
     return folder
 
 
-def _rss_mb() -> float:
+def _peak_mb() -> float:
+    """The process's peak resident memory (on macOS it also counts the memory-mapped model file)."""
     import resource
+
     peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-    return peak / 1e6 if sys.platform == "darwin" else peak / 1e3   # bytes on macOS, kilobytes on Linux
+    return peak / 2**20 if sys.platform == "darwin" else peak / 1024   # bytes on macOS, kilobytes on Linux
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -314,7 +316,8 @@ def main(argv: list[str] | None = None) -> int:
     settings = Settings.from_env()
     parser = argparse.ArgumentParser(prog="python -m arestoteles.meaning", description=__doc__.split("\n\n")[0])
     parser.add_argument("command", choices=["fetch", "check", "list"])
-    parser.add_argument("--model", default=settings.search_model, help=f"default: {settings.search_model}")
+    parser.add_argument("--model", default=settings.search_model,
+                        help=f"default: {settings.search_model}; fetch also takes `all` (for scripts/search_eval.py)")
     parser.add_argument("--dir", type=Path, default=settings.models, help=f"default: {settings.models}")
     args = parser.parse_args(argv)
     if args.command == "list":
@@ -322,15 +325,18 @@ def main(argv: list[str] | None = None) -> int:
             mark = "*" if spec.id == args.model else " "
             print(f"{mark} {spec.id:38s} {spec.size / 1e6:5.0f} MB  {spec.license:20s} {spec.notes}")
         return 0
+    if args.command == "fetch" and args.model == "all":
+        for spec in MODELS.values():
+            print(f"{spec.id} ready in {fetch(spec, args.dir)} ({spec.size / 1e6:.0f} MB)")
+        return 0
     spec = MODELS.get(args.model)
     if spec is None:
         print(f"unknown model {args.model}; known: {', '.join(MODELS)}", file=sys.stderr)
         return 2
     if args.command == "fetch":
-        folder = fetch(spec, args.dir)
-        print(f"{spec.id} ready in {folder} ({spec.size / 1e6:.0f} MB)")
+        print(f"{spec.id} ready in {fetch(spec, args.dir)} ({spec.size / 1e6:.0f} MB)")
         return 0
-    before = _rss_mb()
+    before = _peak_mb()
     started = time.perf_counter()
     embedder = load(spec.id, args.dir, settings.search_threads)
     if embedder is None:
@@ -338,13 +344,19 @@ def main(argv: list[str] | None = None) -> int:
               file=sys.stderr)
         return 1
     loaded = time.perf_counter() - started
-    passages = embedder.passages([("Printing press", "Within fifty years presses ran in more than 250 towns."),
-                                  ("Printing press", "Luther's pamphlets were cheap, short and in German.")])
+    towns, pamphlets = embedder.passages([("Printing press", "Within fifty years presses ran in more than 250 towns."),
+                                          ("Printing press", "Luther's pamphlets were cheap, short and in German.")])
+    embedder.queries(["warm up"])
     started = time.perf_counter()
     query = embedder.queries(["Wie viele Städte hatten eine Druckerpresse?"])[0]
     query_ms = (time.perf_counter() - started) * 1000
-    print(f"{spec.id}: loaded in {loaded:.1f} s, a query embedded in {query_ms:.0f} ms, "
-          f"similarities {passages @ query}, peak memory {_rss_mb():.0f} MB ({_rss_mb() - before:+.0f} MB)")
+    right, wrong = float(towns @ query), float(pamphlets @ query)
+    print(f"{spec.id}: loaded in {loaded:.1f} s, a query embedded in {query_ms:.0f} ms, peak memory "
+          f"{_peak_mb():.0f} MB ({_peak_mb() - before:+.0f} MB); a German question about towns is "
+          f"{right:.2f} close to the English sentence about towns and {wrong:.2f} to one about pamphlets")
+    if right <= wrong:
+        print("the model does not tell them apart: its files or ONNX Runtime are broken", file=sys.stderr)
+        return 1
     return 0
 
 

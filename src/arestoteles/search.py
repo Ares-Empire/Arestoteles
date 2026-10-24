@@ -223,13 +223,13 @@ class Search:
             missing = [k for k in dict.fromkeys(index.keys) if k not in have]
             cached = cache.get(missing) if cache is not None and missing else {}
             have.update(cached)
-            unit_of = dict(zip(index.keys, index.units))
+            unit_of = dict(zip(index.keys, index.units, strict=True))
             todo = [k for k in missing if k not in have]
             for start in range(0, len(todo), CHUNK):
                 if self._pending is not None:   # a newer vault waits: embed for that one (this work is kept)
                     return
                 chunk = todo[start:start + CHUNK]
-                fresh = dict(zip(chunk, embedder.passages([unit_of[k] for k in chunk])))
+                fresh = dict(zip(chunk, embedder.passages([unit_of[k] for k in chunk]), strict=True))
                 if cache is not None:
                     cache.put(fresh)
                 have.update(fresh)
@@ -240,7 +240,7 @@ class Search:
                 cache.close()
         with self._lock:
             index.vectors = _stack(index.keys, have)
-            self._known = dict(zip(index.keys, index.vectors))
+            self._known = dict(zip(index.keys, index.vectors, strict=True))
         if todo:
             release_memory()
         log.info("search: %d passages ready for meaning search in %.1f s (%d texts embedded, %d from the cache)",

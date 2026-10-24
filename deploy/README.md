@@ -38,6 +38,67 @@ Settings (all optional; the defaults fit this server) go in `/root/Arestoteles/v
 `ARESTOTELES_SYNC_INTERVAL` (60), `ARESTOTELES_PULL`/`ARESTOTELES_PUSH` (1; 0 turns fetching/pushing off),
 `ARESTOTELES_RUBY` (`ruby`), `ARESTOTELES_TZ` (`Europe/Berlin`).
 
+## Meaning search (`GET /search`)
+
+The search's meaning side runs a small embedding model on the CPU: **EmbeddingGemma-300m, 4-bit** (Google, Gemma Terms
+of Use), through ONNX Runtime (no torch, no GPU). Its files (218 MB) live outside git in `/var/lib/arestoteles/models`
+and are fetched once by the command below, never during a request. The passages' embeddings are kept by text hash in
+`/var/lib/arestoteles/search/<model>.sqlite` (a few MB, made by the service), so a restart or a pull embeds only what
+changed. Without the model files the service runs as before: the search answers with word matches
+(`"meaning": false`) and logs once "meaning search is off: the model files are not in …".
+
+```bash
+cd /root/Arestoteles
+.venv/bin/pip install -q -e .                       # numpy, onnxruntime, tokenizers (the Aresync hook does it when
+                                                    # pyproject.toml changed)
+.venv/bin/python -m arestoteles.meaning fetch       # → /var/lib/arestoteles/models/embeddinggemma-300m-q4 (pinned
+                                                    # commit, size and SHA-256 checked; run again: "already there")
+.venv/bin/python -m arestoteles.meaning check       # "loaded in … s, a query embedded in … ms, …, peak memory … MB"
+systemctl restart arestoteles.service               # the service looks for the model when it starts
+journalctl -u arestoteles -n 30 | grep -E "meaning|search"
+#   meaning model embeddinggemma-300m-q4 loaded in 0.6 s
+#   search: 538 passages ready for meaning search in … s (1233 texts embedded, 0 from the cache)
+```
+
+Settings (in `vault.env`, all optional): `ARESTOTELES_MODELS` (`/var/lib/arestoteles/models`), `ARESTOTELES_SEARCH_MODEL`
+(`embeddinggemma-300m-q4`; `off`: words only; the other ids: `python -m arestoteles.meaning list`),
+`ARESTOTELES_SEARCH_CACHE` (`/var/lib/arestoteles/search`), `ARESTOTELES_SEARCH_THREADS` (2, of the server's 4 cores).
+
+**Memory and time.** Measured on the MacBook (2 threads, physical footprint): with the model loaded and the real vault
+embedded the process holds about **430 MB more** (510 MB at the peak, while embedding). On the server expect about the
+same plus up to 200 MB of the memory-mapped weights file (clean pages the kernel can drop and read again); after each
+embedding run the service hands the freed memory back (`malloc_trim`). The first full embedding of the real vault (538
+passages, 1233 texts with their sentences) took 24 s on the Mac, so about 1–2 minutes on the server; until it is done
+the search answers with `"meaning": false`, later pulls embed only the changed passages (seconds). A query takes 7 ms on
+the Mac (median, ranking included). Check on the server once the first embedding is logged:
+`systemctl show arestoteles -p MemoryCurrent` (compare with the number before the update). More than about 600 MB
+above it: `ARESTOTELES_SEARCH_MODEL=off` in `vault.env` and a restart turns the meaning side off (the words still
+answer), or try `jina-v2-base-de-int8` (`fetch --model …`).
+
+**Why this model** (`scripts/search_eval.py`, 2026-10-24, on the MacBook with 2 threads; 24 queries on the fixture
+vault in English and German: other words than the note, figures, sources, terms, plus 3 the vault cannot answer;
+"search" is the route's answer, "meaning" the model alone, "words" the word side alone: 58% / 71%):
+
+| model | files | memory (after / peak) | query (median) | meaning @1 / @3 | search @1 / @3 | real vault, German term → English passage, meaning @1 / @3 |
+|---|---|---|---|---|---|---|
+| **embeddinggemma-300m-q4** | 218 MB | +428 / +514 MB | 7 ms | 92% / 100% | **100% / 100%** | **55% / 76%** |
+| embeddinggemma-300m-int8 | 330 MB | +1407 / +2045 MB | 45 ms | 92% / 100% | 100% / 100% | 60% / 81% |
+| multilingual-e5-small-int8 | 135 MB | +913 / +913 MB | 2 ms | 75% / 96% | 83% / 100% | 26% / 52% |
+| multilingual-e5-small (float32) | 487 MB | +1285 / +1285 MB | 3 ms | 79% / 96% | 79% / 96% | 29% / 48% |
+| paraphrase-multilingual-minilm-int8 | 135 MB | +770 / +770 MB | 2 ms | 67% / 96% | 79% / 96% | 21% / 36% |
+| jina-v2-base-de-int8 | 164 MB | +906 / +906 MB | 3 ms | 71% / 96% | 79% / 96% | 33% / 67% |
+
+The XLM-R tokenizer of e5 and MiniLM alone takes about 190 MB in memory; the int8 Gemma build is slower and bigger
+than the 4-bit one at the same quality. The real-vault column comes from the vault's glossary (each German term should
+find a passage of its "Where" note holding the English term; 42 terms); only rates were printed. To compare again on
+the server (its own CPU and memory numbers):
+
+```bash
+cd /root/Arestoteles
+.venv/bin/python -m arestoteles.meaning fetch --model all --dir /root/search-models   # every candidate, 1.5 GB
+.venv/bin/python scripts/search_eval.py --dir /root/search-models                    # then: rm -r /root/search-models
+```
+
 ## Caddy
 
 In `/etc/caddy/Caddyfile`, inside the `ares-empire.de, www.ares-empire.de` site, **before** the hub's catch-all, next

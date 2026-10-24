@@ -26,6 +26,7 @@ as `Patrik Breeck (Arestoteles app) <287037715+carlsenares@users.noreply.github.
 | `GET /vault` | `Vault`, the whole index. `ETag` = the vault commit plus the index's shape version (`"8db2491-2"`, CONTRACT ADDITION: a server update that adds fields reaches phones without a vault change); `If-None-Match` → `304`. |
 | `GET /notes/{id}/source` | `{id, version, markdown}`: the note's body as Markdown (without frontmatter), for the free editor. |
 | `POST /edits` `Edit` | `EditResult`. |
+| `GET /search?q=<query>&limit=<n>` | `SearchAnswer`: the passages that answer a query, best first, by their words and their meaning (see Search). |
 | `GET /health` | **no login** (for Aresus): `{"ok": bool, "commit": string, "pulled": "…Z", "pushed": bool, "notes": n}`; `ok` is false when the last pull or push failed for more than 10 minutes. |
 
 `{id}` is URL-encoded (note ids contain spaces and apostrophes).
@@ -220,6 +221,63 @@ Rules every edit follows (they are the vault's own, `CLAUDE.md` there):
   conflict with an edit from elsewhere), the commit is kept on the branch `arestoteles-app/conflict-<time>` (pushed
   when GitHub is reachable) and the clone follows GitHub; nothing is lost, nothing is merged by guesswork.
 
+## Search
+
+`GET /search?q=<query>&limit=<n>` (contract of 2026-10-24, `empire-ios/docs/build-2026-10-24/briefs/E-search-contract.md`):
+passages of the vault that answer a query, best first, found by their words and by their meaning: a German question
+finds an English passage, a question in other words finds the passage. No AI writes text: every result is a passage
+of the vault as it stands. Login as every route; `503` before the first index.
+
+- **Query:** `q` 1–200 characters after trimming, `limit` 1–30 (default 12); anything else answers `400 {"error"}` in
+  the request's language.
+
+```ts
+interface SearchAnswer {
+  commit: string;                 // the vault commit the results come from (the ETag of /vault before the "-")
+  meaning: boolean;               // false while the meaning model is not ready: the results are then word matches only
+  results: SearchResult[];        // best first, at most `limit`
+}
+
+interface SearchResult {
+  note: string;                   // the note's id (as in /vault)
+  block: number;                  // index in that note's `blocks`
+  item: number | null;            // for a list: the item's index in the list; else null
+  position: string | null;        // for a position: its id (`note`/`block` are the note and the positions block it
+                                  // stands in); else null
+  heading: string | null;         // the heading the passage stands under, plain text
+  text: Text;                     // the whole passage, inline Markdown as in /vault
+  sentence: string;               // the passage's one sentence that answers best, plain text (the whole passage if it
+                                  // is one sentence)
+  match: "words" | "meaning" | "both";   // "words": holds words of the query; "meaning": found by its meaning only
+}
+```
+
+- **Passages** are every paragraph, list item, quote, callout and position of the notes people read: not the `home`,
+  `positions` and `glossary` index pages (the app's `VaultSearch` skips the same types), but the positions written on
+  Positions.md are passages too (`note` "Positions", the "Across topics" block). A callout's `text` is its title in
+  bold before its text, as the app's `Lookup` shows it (its `sentence` comes from the text). A section page's
+  "*Part of [[X]], section N.*" line is no passage. CONTRACT ADDITION: a **table** is one passage too (`item` null):
+  `text` is its rows as lines, header first, cells joined by " · " (`City · First press`, `Mainz · 1450`), and
+  `sentence` is the row that answers (so a figure in a table is found).
+- **Words:** the query's words in the passage, and more weakly in the heading above it and its note's title, with the
+  app's folding (case and accents: "Handelsstadte" finds "Handelsstädte"), word beginnings ("Druck" finds
+  "Druckorte"), other endings of the same word ("printing" finds "printers"), and weakly inside longer words; numbers
+  only as they are. Small words ("the", "der", "wie") count only when the query has nothing else. Scored with BM25.
+- **Meaning:** a multilingual sentence-embedding model on the server's CPU (EmbeddingGemma-300m, 4-bit, through ONNX
+  Runtime; chosen in `scripts/search_eval.py`, numbers in `deploy/README.md`). A passage counts with the closer of
+  itself and its closest sentence (a table: its closest row), so one fact in a long paragraph is found too. The model
+  reads each passage with where it stands (the note's title and the heading).
+- **Ranking:** half how close the passage is in meaning (scaled from the model's floor to the query's closest
+  passage), half how much of the query's words it holds (BM25 over the query's total), plus a bonus when it holds every
+  word of the query (one at least in its own text), so those rank higher. `match` is "words" when it holds words of the
+  query (the app can mark them in `sentence`), "meaning" when it is among the `limit` passages closest in meaning and
+  holds none of the words, "both" for both. `sentence` is the passage's sentence holding the most of the query's words,
+  then the closest in meaning. A query that nothing in the vault is close to and no passage holds answers no results.
+- **`meaning: false`** while the model is not ready: just after a start (the model loads and, the first time, embeds
+  every passage, which takes about a minute), and CONTRACT ADDITION: for the few seconds after a pull or an edit
+  changed passages (only the changed ones are embedded again; the others come from the cache), and always when the
+  server has no model files (`deploy/README.md` → Meaning search). The word matches answer at once in every case.
+
 ## Language
 
 Requests send `Accept-Language` (ares-empire/docs/LANGUAGES.md): German when the highest-weighted `de`/`en` tag is
@@ -230,6 +288,11 @@ The vault check's own warning lines, all vault content (titles, text, glossary),
 ## Samples
 
 `docs/samples/vault.json` (a small made-up vault, never Patrik's notes), `docs/samples/note-source.json`,
-`docs/samples/edit-result.json`: used by the app's tests and sample mode. Keep them valid when the contract changes.
+`docs/samples/edit-result.json`, `docs/samples/search.json`: used by the app's tests and sample mode. Keep them valid
+when the contract changes. The made-up vault is `tests/fixtures/vault/`: it builds exactly `vault.json` (with the
+sample's commit, build time and versions; `tests/test_samples.py`). `search.json` is the server's real answer on that
+vault for "Wie viele Bücher wurden bis 1500 gedruckt?" (limit 5) with the real model: after a change to the search,
+`ARESTOTELES_MODELS=models .venv/bin/python scripts/make_search_sample.py` writes it again (`tests/test_search_model.py`
+checks it when the model is fetched).
 Since the lookup additions every block and list item has `lines`, every note `inbox`, and the vault has one "discuss
 later" mark (`2026-10-23 2110 discuss Printing press`, about `Printing press#1`, no text).

@@ -66,13 +66,15 @@ def test_passages_of_the_notes_people_read(service):
                                                                                         "Printing press#2"]
     callout = next(p for p in found if p.note == "Printing press" and p.block == 7)
     assert callout.text.startswith("**A rival view** Elizabeth Eisenstein (*The Printing Press")
-    assert callout.sentences == ("Elizabeth Eisenstein (The Printing Press as an Agent of Change, 1979) gives the press "
-                                 "the leading role; Andrew Pettegree argues that pamphlets mattered more than books.",)
+    assert callout.sentences == ("Elizabeth Eisenstein (The Printing Press as an Agent of Change, 1979) gives the "
+                                 "press the leading role; Andrew Pettegree argues that pamphlets mattered more than "
+                                 "books.",)
     table = next(p for p in found if p.note == "Spread of print" and p.block == 4)
     assert (table.item, table.text.split("\n")[0]) == (None, "City · First press")
     assert table.sentences == ("Mainz · 1450", "Venice · 1469", "Lyon · 1473")
     source = next(p for p in found if p.note == "Printing press" and p.heading == "Sources" and p.item == 1)
-    assert (source.text, source.plain) == ("Andrew Pettegree, *Brand Luther*, 2015", "Andrew Pettegree, Brand Luther, 2015")
+    assert source.text == "Andrew Pettegree, *Brand Luther*, 2015"
+    assert source.plain == "Andrew Pettegree, Brand Luther, 2015"
     assert not any(p.plain.startswith("Part of") for p in found)   # a section page's line naming its overview
     two = next(p for p in found if p.note == "Printing press" and p.block == 3)
     assert two.sentences == ("Within fifty years of the Gutenberg Bible, presses ran in more than 250 European towns "

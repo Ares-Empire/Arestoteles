@@ -34,43 +34,45 @@ def passages(vault: dict) -> list[Passage]:
     for note in vault["notes"]:
         on_index_page = note["type"] in INDEX_PAGES
         heading: str | None = None
-
-        def add(index: int, text: str, sentences: list[str], *, item: int | None = None,
-                position: str | None = None, extra: str = "") -> None:
-            body = plain(text)
-            if not body.strip():
-                return
-            found.append(Passage(note=note["id"], block=index, item=item, position=position, heading=heading,
-                                 text=text, plain=body, sentences=tuple(sentences) or (body.strip(),),
-                                 title=note["title"]))
-
         for index, block in enumerate(note["blocks"]):
             kind = block["kind"]
+            at = {"note": note, "block": index, "heading": heading}
             if kind == "heading":
                 heading = plain(block["text"]).strip() or None
             elif kind == "positions":
                 for position_id in block["ids"]:
                     if position_id in positions:
                         text = positions[position_id]["text"]
-                        add(index, text, split(plain(text)), position=position_id)
+                        found += _passage(**at, text=text, sentences=split(plain(text)), position=position_id)
             elif on_index_page:
                 continue
             elif kind in ("paragraph", "quote"):
                 if note["part_of"] and PART_OF.fullmatch(plain(block["text"]).strip()):
                     continue
-                add(index, block["text"], split(plain(block["text"])))
+                found += _passage(**at, text=block["text"], sentences=split(plain(block["text"])))
             elif kind == "list":
                 for number, item in enumerate(block["items"]):
-                    add(index, item["text"], split(plain(item["text"])), item=number)
+                    found += _passage(**at, text=item["text"], sentences=split(plain(item["text"])), item=number)
             elif kind == "callout":
                 # shown as the app's Lookup shows it: the title in bold before the text; the title is no sentence
                 title = block["title"]
                 text = f"**{title}** {block['text']}" if title else block["text"]
-                add(index, text, split(plain(block["text"])))
+                found += _passage(**at, text=text, sentences=split(plain(block["text"])))
             elif kind == "table":
                 rows = [" · ".join(cells) for cells in [block["header"], *block["rows"]]]
-                add(index, "\n".join(rows), [plain(row).strip() for row in rows[1:] if plain(row).strip()])
+                found += _passage(**at, text="\n".join(rows),
+                                  sentences=[plain(row).strip() for row in rows[1:] if plain(row).strip()])
     return found
+
+
+def _passage(note: dict, block: int, heading: str | None, text: str, sentences: list[str], item: int | None = None,
+             position: str | None = None) -> list[Passage]:
+    """The passage, or none when it has no words."""
+    body = plain(text)
+    if not body.strip():
+        return []
+    return [Passage(note=note["id"], block=block, item=item, position=position, heading=heading, text=text,
+                    plain=body, sentences=tuple(sentences) or (body.strip(),), title=note["title"])]
 
 
 # ── plain text ──

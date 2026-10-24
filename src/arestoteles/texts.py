@@ -36,7 +36,8 @@ TEXTS: dict[str, tuple[str, str]] = {
     "unknown_position": ("Unknown position.", "Unbekannte Position."),
     "unknown_callout": ("Unknown callout.", "Unbekannter Hinweis."),
     "bad_query": ("A search needs 1 to 200 characters.", "Eine Suche braucht 1 bis 200 Zeichen."),
-    "bad_limit": ("The limit must be a whole number from 1 to 30.", "Das Limit muss eine ganze Zahl von 1 bis 30 sein."),
+    "bad_limit": ("The limit must be a whole number from 1 to 30.",
+                  "Das Limit muss eine ganze Zahl von 1 bis 30 sein."),
     # 409: changed elsewhere
     "note_changed": ("This note was changed elsewhere; here is the current version.",
                      "Diese Notiz wurde woanders geändert; hier ist die aktuelle Fassung."),

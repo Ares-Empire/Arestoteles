@@ -12,8 +12,12 @@ One Python process (`python -m arestoteles`, FastAPI + uvicorn on `127.0.0.1:809
 - **Sync loop (60 s):** fetch the vault clone (`/var/lib/arestoteles/vault`), fast-forward or rebase app commits on
   top, push what waits, rebuild the index when the commit changed. A local commit that cannot be replayed is kept on
   a branch `arestoteles-app/conflict-<time>`; nothing is ever lost.
-- **API:** `GET /vault` (the whole index, ETag = commit), `GET /notes/{id}/source`, `POST /edits`, `GET /health`.
-  Login: the Empire token, service `arestoteles` (as Aresus).
+- **API:** `GET /vault` (the whole index, ETag = commit), `GET /notes/{id}/source`, `POST /edits`, `GET /search`,
+  `GET /health`. Login: the Empire token, service `arestoteles` (as Aresus).
+- **Search:** each rebuild makes the passages' word index at once and embeds them in a background thread with the
+  meaning model (EmbeddingGemma-300m 4-bit, ONNX Runtime on the CPU, files in `/var/lib/arestoteles/models`), kept on
+  disk by text hash (`/var/lib/arestoteles/search`), so a pull re-embeds only what changed. Without the model files
+  the search answers with words only (`"meaning": false`).
 
 ## Layout
 
@@ -26,7 +30,12 @@ src/arestoteles/
   service.py    state, sync loop, edit flow       api.py       routes        auth.py  Empire login
   texts.py      English + German sentences        models.py    the contract as pydantic models
   config.py     settings from the environment     main.py      start
-tests/   fixtures/vault/ (made up)   linecheck.py (the Block.lines proof)   deploy/ (unit, Aresync hook, install)
+  passages.py   what search finds (and sentences) words.py     word search: folding, BM25
+  meaning.py    the meaning model (ONNX), fetch   vectors.py   embeddings on disk by text hash
+  search.py     GET /search: the index, the ranking, the background embedding
+tests/   fixtures/vault/ (made up)   linecheck.py (the Block.lines proof)   fakes.py (the fake meaning model)
+scripts/ search_eval.py (compares meaning models)   make_search_sample.py (docs/samples/search.json)
+deploy/  (unit, Aresync hook, install)
 ```
 
 ## Rules
@@ -45,13 +54,20 @@ tests/   fixtures/vault/ (made up)   linecheck.py (the Block.lines proof)   depl
 - Language: `~/ares-empire/docs/LANGUAGES.md`. All of the server's sentences are in `texts.py` (English and German);
   vault content and the check's own lines are never translated. Every answer sets `Content-Language`.
 - No secrets in the repo: `.env` and `vault.env` are git-ignored; never log a token.
+- Search: no model writes text, every result is a passage as it stands. The tests use `tests/fakes.py` (no
+  download); only `tests/test_search_model.py` runs the real model, skipped without its files. A change to the
+  ranking: run `scripts/search_eval.py` before and after (on the real vault it prints numbers only), and write
+  `docs/samples/search.json` again (`scripts/make_search_sample.py`).
 
 ## Test and run
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -e '.[dev]'
 .venv/bin/python -m pytest -q          # needs git and ruby; the real-vault test runs only on Patrik's Mac
-ARESTOTELES_VAULT=/tmp/vault-copy ARESTOTELES_PULL=0 ARESTOTELES_PUSH=0 .venv/bin/python -m arestoteles
+.venv/bin/python -m arestoteles.meaning fetch --dir models     # the meaning model (git-ignored), for the model test
+ARESTOTELES_VAULT=/tmp/vault-copy ARESTOTELES_PULL=0 ARESTOTELES_PUSH=0 ARESTOTELES_MODELS=models \
+  ARESTOTELES_SEARCH_CACHE=/tmp/arestoteles-search .venv/bin/python -m arestoteles
+.venv/bin/python scripts/search_eval.py --dir models          # compare the models (scripts/search_eval.py)
 ```
 
 ## The website (arestoteles.de)

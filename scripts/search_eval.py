@@ -1,13 +1,15 @@
 """Compare meaning models for GET /search: hits@1 / hits@3, memory and query time.
 
-    .venv/bin/python scripts/search_eval.py                       # every model fetched into ARESTOTELES_MODELS
-    .venv/bin/python scripts/search_eval.py --models multilingual-e5-small-int8,jina-v2-base-de-int8
-    .venv/bin/python scripts/search_eval.py --vault ~/Documents/Patrik\\ Breeck/Weltbild   # + the real vault, numbers only
+    .venv/bin/python -m arestoteles.meaning fetch --model all --dir models     # every candidate, once
+    .venv/bin/python scripts/search_eval.py --dir models                      # every model fetched there
+    .venv/bin/python scripts/search_eval.py --dir models --models embeddinggemma-300m-q4,jina-v2-base-de-int8
+    .venv/bin/python scripts/search_eval.py --dir models --vault <vault>      # + a real vault, numbers only
 
 Each model runs in its own process, so its memory is measured alone: "memory" is how much more the process holds
 after loading the model, embedding the passages and answering the queries (now, and at its peak) than before the
-model's libraries were imported (on Linux the resident size, on macOS the physical footprint, see `memory_mb`). Query time is one query's embedding plus the ranking, with the threads the
-server uses (ARESTOTELES_SEARCH_THREADS, default 2).
+model's libraries were imported (on Linux the resident size, on macOS the physical footprint, see `memory_mb`).
+Query time is one query's embedding plus the ranking, with the threads the server uses (ARESTOTELES_SEARCH_THREADS,
+default 2).
 
 The queries (tests/fixtures/search-queries.json) are about the made-up fixture vault: English and German, other words
 than the note, figures, sources, terms, and three the vault cannot answer (they set each model's `min_similarity`).
