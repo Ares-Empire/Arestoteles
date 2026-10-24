@@ -255,10 +255,16 @@ class Editor:
         return plan
 
 
+OPS = ("confirm_position", "reword_position", "change_position", "drop_position", "add_position", "set_confidence",
+       "adopt_callout", "dismiss_callout", "edit_note", "quick_note")
+
+
 def apply(edit: dict, editor: Editor) -> Plan:
+    """Run one edit (already checked against models.Edit) on the editor."""
     op = edit["op"]
-    args = {k: v for k, v in edit.items() if k != "op"}
-    return getattr(editor, op)(**args)
+    if op not in OPS:
+        raise ValueError(f"unknown edit {op!r}")
+    return getattr(editor, op)(**{k: v for k, v in edit.items() if k != "op"})
 
 
 # ── text rules ──

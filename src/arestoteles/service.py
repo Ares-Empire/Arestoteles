@@ -96,12 +96,15 @@ class VaultService:
             if not self.root.is_dir():
                 log.warning("no vault at %s", self.root)
                 return
-            commit = self.repo.head(short=True) if self.repo.is_repo() else ""
+            try:
+                commit = self.repo.head(short=True) if self.repo.is_repo() else ""
+            except GitError:   # a clone without any commit yet
+                commit = ""
             if not force and self.built is not None and self.built.commit == commit and commit:
                 return
             started = self.clock()
             self.built = build(self.root, commit, iso(started))
-            log.info("vault built at %s: %d notes, %d unresolved links", commit or "(no commit)",
+            log.info("vault built at %s: %d notes, %d unresolved link targets", commit or "(no commit)",
                      len(self.built.notes), len(self.built.unresolved))
 
     # ── the sync loop ──

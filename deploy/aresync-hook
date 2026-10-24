@@ -1,0 +1,22 @@
+#!/bin/bash
+# Deploy hook for Arestoteles on the server: cp deploy/aresync-hook /root/aresync/hooks/Arestoteles && chmod +x it.
+# Aresync runs it after it pulled a new commit: $1 = the checkout (also the cwd), $2 / $3 = the commits before and
+# after the pull. The vault service runs from the checkout's venv (installed editable), so new code only needs a
+# restart; new dependencies (pyproject.toml) need a reinstall first. The website's web/ is bind-mounted read-only,
+# so it is live the moment it is pulled; its server script or compose file need the web container recreated.
+set -euo pipefail
+
+before="${2:-}"
+after="${3:-}"
+changed() {  # true when one of the paths changed in this pull (or when that is not known)
+  [ -z "$before" ] || [ -z "$after" ] || ! git diff --quiet "$before" "$after" -- "$@"
+}
+
+if changed pyproject.toml; then
+  .venv/bin/pip install --quiet --disable-pip-version-check -e .
+fi
+systemctl restart arestoteles.service
+
+if changed webauth/server.py docker-compose.yml; then
+  docker compose up -d --force-recreate web
+fi

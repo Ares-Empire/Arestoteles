@@ -1,63 +1,36 @@
 # Arestoteles
 
-An AI-assisted stock portfolio manager for the **semiconductor + AI-infrastructure** sector.
-Claude (via API) researches a fixed universe of ~23 liquid US-listed stocks using curated web
-sources, writes evidence-backed investment theses, and proposes buy/trim/exit decisions. A
-deterministic Python risk engine validates every decision and places orders through a broker
-API (Alpaca paper trading first; real money only after a long validation period). Runs on the
-existing Hetzner server. Later integrates with **Aresium** (the finance tracker) so positions,
-theses, citations, and planned holding periods are viewable there.
+The province of Patrik's **Weltbild**: his Obsidian vault of topics, positions, mechanisms, events and questions
+(repo `carlsenares/opinions`). Decided 2026-10-24 (`~/ares-empire/docs/ARESTOTELES-APP.md`); the trading bot that
+lived here before is gone (git keeps its history).
 
-> **Honest framing (read `docs/01-feasibility.md`):** beating buy-and-hold is *unlikely*.
-> This project is designed so that the downside is bounded, every decision is measurable,
-> and the build itself is the guaranteed payoff. Any alpha is a bonus, not the plan.
+Two parts:
 
-## Key decisions (already made — see docs for reasoning)
+- **The vault service** (`src/arestoteles/`): the server of the Arestoteles iPhone app. It keeps a clone of the
+  vault, pulls it every minute, builds the whole index (notes, positions with their history, links and backlinks,
+  glossary, a brief per topic) and applies the app's edits by the vault's own rules, checked with the vault's own
+  check, committed and pushed. Contract: [`docs/API.md`](docs/API.md), samples in `docs/samples/`.
+- **The website** arestoteles.de (`web/`, `webauth/`, the compose `web` service, `scripts/refresh_quotes.py`):
+  unchanged, see [`docs/11-web-frontend.md`](docs/11-web-frontend.md).
 
-| Question | Decision |
+## Run and test
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -e '.[dev]'
+.venv/bin/python -m pytest -q
+# against a copy of a vault, without fetching or pushing (the app routes need an Empire login):
+ARESTOTELES_VAULT=/tmp/vault-copy ARESTOTELES_PULL=0 ARESTOTELES_PUSH=0 .venv/bin/python -m arestoteles
+curl -s http://127.0.0.1:8099/api/arestoteles/health
+```
+
+Deploying (server, Caddy, Aresync, Aresus): [`deploy/README.md`](deploy/README.md).
+
+## Files
+
+| | |
 |---|---|
-| Day trading vs. portfolio manager? | **Swing/position portfolio manager.** Typical hold 2 weeks – 6 months. Daily decision cadence + event triggers. Day trading rejected (see `docs/02`). |
-| Who places orders? | **Python code** places orders. The AI only emits structured decision JSON; a code-level risk engine validates it; v1 requires human approval via Telegram. |
-| Industry focus? | Yes — one sector. **Semiconductors + AI infrastructure** (subsector of tech), ~23 traded names + 5 monitored signal tickers. See `config/universe.yaml`. |
-| Sandbox platform? | **Alpaca paper trading** (free, API identical to live). |
-| Real-money platform? | Decide at Phase 5: **Alpaca international account or Interactive Brokers** (funding-fee check pending). See `docs/06`. |
-| Websearch design? | Hybrid: free RSS/EDGAR/price feeds for *detection*, paid Claude `web_search` (domain-whitelisted) only when triggered. Evidence packs with mandatory citations. See `docs/04`. |
-| Risk gating? | AI outputs conviction (0–100) + risk grade + falsifiers; code enforces hard limits (max position 10 %, min cash 15 %, stops, circuit breakers, conviction ≥ 70 for new buys). See `docs/05`. |
-| Running cost / capital needed? | ~€45–80/month API + ~€0 broker (paper). Breakeven capital at a *plausible* +2–3 % edge: €30–45k. With student capital, treat costs as tuition. Full math in `docs/07`. |
-
-## Document map
-
-| File | Contents |
-|---|---|
-| `CLAUDE.md` | Instructions + state for future Claude Code sessions. **Read first.** |
-| `docs/01-feasibility.md` | Can this work without pro experience? Critical profitability evaluation. Legal/tax notes. |
-| `docs/02-strategy.md` | Horizon decision (not day trading), universe choice + alternatives, benchmarks, what the system never does. |
-| `docs/03-architecture.md` | Workflow, components, schedule, who-does-what (AI vs. code), DB schema, Hetzner deployment. |
-| `docs/04-research-pipeline.md` | The websearch system in detail: layers, sources, evidence packs, anti-hallucination + prompt-injection defenses, search budget. |
-| `docs/05-risk-management.md` | Hard rules, conviction gate, skeptic pass, circuit breakers, human-in-the-loop stages. |
-| `docs/06-brokers-and-execution.md` | Alpaca vs. IBKR, PDT rule, order policy, fees, market data, German tax notes. |
-| `docs/07-costs-and-capital.md` | Full cost model (API/broker/server), cadence cost comparison, breakeven capital table. |
-| `docs/08-testing-and-validation.md` | Unit/integration/prompt-regression tests, shadow mode, paper phase with pre-registered criteria, why classical backtests are invalid for LLMs. |
-| `docs/09-aresium-integration.md` | The Ares-Empire decision (separate Arestoteles site + overview card in Aresium), read-only REST API contract, SSO, deploy seam. |
-| `docs/11-web-frontend.md` | The Arestoteles portal: design brief (epic bust-drop intro, on-the-wall charts), broker references, and the copy-paste design prompt. |
-| `docs/10-roadmap.md` | Phases 0–6 and the future-improvements backlog. |
-| `config/universe.yaml` | The tradeable universe, monitored tickers, benchmarks. |
-| `config/config.example.toml` | All tunable numbers (risk limits, budgets, schedule, models). Doubles as the v1 spec. |
-
-## Status
-
-- **Phase 0 (planning): complete** — 2026-06-13.
-- **Phase 1 (skeleton + free ingestion): code complete and key-verified** — 2026-06-13. Alpaca
-  paper, Telegram, and Finnhub keys are live-verified, and the full pipeline has been rehearsed
-  locally via Docker exactly as it will run on Hetzner (migrate → `preflight` → morning_sweep →
-  main_run → post_close → bot). Remaining for the Phase 1 exit: deploy to Hetzner per
-  `deploy/README.md` and let the pollers run unattended for a week.
-- **Phase 2 (brain in shadow): not started.** Gated on `ANTHROPIC_API_KEY` (deliberately empty
-  until then) and an explicit go-ahead on the ~€45–80/mo API budget.
-
-## Relationship to Aresium
-
-Aresium (`C:\Users\pab\aresium`) is the self-hosted finance tracker. Arestoteles will expose a
-read-only REST API; Aresium gets an "Investments" view showing each position **with the thesis
-that justified it, source citations, planned holding period, and review triggers**. Contract in
-`docs/09-aresium-integration.md`. No shared database.
+| `CLAUDE.md` | Notes for Claude sessions: the layout, the rules, the website's operating notes. |
+| `docs/API.md` | The contract (version 1) with the server's marked additions. |
+| `docs/11-web-frontend.md` | The website's design brief. |
+| `deploy/` | The systemd unit, the Aresync hook, the quotes timer and image, the website's TLS script. |
+| `tests/fixtures/vault/` | A small made-up vault: it builds exactly `docs/samples/vault.json`. |

@@ -274,13 +274,11 @@ def _items(tokens: list[Token]) -> list[tuple[str, int]]:
     """A list's items in order as (inline source, depth), nested lists flattened."""
     out: list[tuple[str, int]] = []
     base = tokens[0].level
-    current: list[str] | None = None
     for t in tokens:
         if t.type == "list_item_open":
-            current = []
             out.append(("", (t.level - base - 1) // 2))
-        elif t.type == "inline" and current is not None and out:
-            # only the item's own paragraphs (a nested list's items open their own entry first)
+        elif t.type == "inline" and out:
+            # the latest item's paragraphs (a nested list's items open their own entry first)
             source, depth = out[-1]
             out[-1] = (source + "\n" + t.content if source else t.content, depth)
     return out

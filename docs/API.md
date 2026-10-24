@@ -30,6 +30,10 @@ as `Patrik Breeck (Arestoteles app) <287037715+carlsenares@users.noreply.github.
 
 `{id}` is URL-encoded (note ids contain spaces and apostrophes).
 
+CONTRACT ADDITION (server, 2026-10-24): `pulled` is `null` until the first successful pull, and `pushed` is false
+while app commits wait for GitHub. Before the first index is built (no clone yet), the routes with login answer
+`503 {"error"}` ("still loading"); `/health` answers `ok: false`.
+
 ## Types
 
 ```ts
@@ -39,6 +43,8 @@ interface Vault {
   built: string;                  // when the server built it
   notes: Note[];                  // every note except Templates/ and CLAUDE.md, sorted by id
   positions: PositionGroup[];     // Positions.md: "Across topics" first, then each topic in that page's order
+                                  // (CONTRACT ADDITION: topics with positions the page does not embed yet follow,
+                                  // sorted by id, so no position is hidden)
   glossary: Term[];               // Glossary.md, sorted by English
   home: { learn_next: string[] }; // Home.md "To learn about next": inline Markdown items, links resolved
 }
@@ -52,7 +58,7 @@ interface Note {
   title: string;                  // the first "# " heading, else the id
   summary: string | null;         // the "> [!summary]" box, inline Markdown (see Text)
   confidence: "solid" | "my-read" | "shaky" | null;
-  created: string | null;
+  created: string | null;         // frontmatter `created` (CONTRACT ADDITION: else `date`, as sessions have)
   updated: string | null;
   tags: string[];
   topic: string | null;           // the topic overview this note belongs to: itself for an overview, the overview for
@@ -85,6 +91,10 @@ type Block =
 // Text: inline Markdown the app renders with AttributedString(markdown:): **bold**, *italic*, `code`, and links.
 // [[Note]], [[Note|alias]] and [[Note#Heading]] become [shown text](arestoteles://note/<id>#<anchor>) (id and anchor
 // percent-encoded); a link to a note that does not exist stays plain text. Web links stay as they are.
+// CONTRACT ADDITION (server): the shown text is what Obsidian shows: the alias, else "Note > Heading", else the note
+// name, with Markdown characters escaped. A line break inside a paragraph stays "\n" (Obsidian shows it). A callout's
+// or quote's text keeps its paragraphs apart with a blank line and its list items as "• " lines. Block `callout` of
+// style "note" (not in Note.callouts) has index -1.
 
 interface Callout { index: number; style: "claude" | "shaky"; title: string | null; text: Text }
 
@@ -105,6 +115,7 @@ interface Term { english: string; german: string; note: string | null }   // the
 interface Brief {                 // a topic before a discussion, built from the vault's structure (no AI)
   positions: string[];            // position ids
   sections: { title: string; summary: Text; note: string | null }[];  // the overview's numbered sections
+                                  // (CONTRACT ADDITION: summary = the section's first paragraph, title without "N.")
   counterpoints: { note: string; title: string | null; text: Text }[]; // [!claude] callouts of the topic's notes
   shaky: { note: string; text: Text }[];       // [!shaky] callouts of the topic's notes
   terms: Term[];                  // glossary terms whose "Where" note belongs to this topic
@@ -144,13 +155,35 @@ Rules every edit follows (they are the vault's own, `CLAUDE.md` there):
 - `change_position` / `drop_position` write `- **YYYY-MM-DD:** I thought: <old text>. What changed it: <why>` under
   `## How my view changed` on the same note (created before `## Sources`, else at the end), newest first. Beliefs change;
   they are not overwritten.
+  CONTRACT ADDITION (needed for `Position.history`): `change_position` writes the position's number into the date,
+  `- **2026-10-24, position 2:** I thought: …`, and `Position.history` is the entries naming its number. A
+  `drop_position` entry has no number (the position is gone); after a drop, entries of the dropped position lose their
+  number and those of later positions are renumbered with the list. An entry without a number belongs to no position.
+- CONTRACT ADDITION: `reword_position` and `change_position` remove "(draft)": the new words are Patrik's (a draft
+  is a position worded by Claude). `add_position` on a topic overview without `## My position` also adds
+  `![[<Topic>#My position]]` under `## By topic` on Positions.md (`changed` then lists both notes).
 - Every edit sets the note's `updated` to today; `quick_note` creates `Inbox/YYYY-MM-DD HHMM <first words>.md` with
   `type: inbox`, `status: new`, `created`, the text verbatim (it is raw input, never rewritten).
 - **Versions:** an edit naming `version` fails with `409 {"error", "current": Note}` when the file changed since. Position
   edits find their position by id; when it no longer exists the answer is `409` too.
 - A vault check *error* after an edit undoes it (`422`, the errors in `error`); *warnings* are returned, the edit stays.
+  CONTRACT ADDITION: both count only what the edit added, compared with the check before it (a warning the vault
+  already had is not returned; an old error elsewhere does not block edits). Without Ruby (or without the script) the
+  check is skipped and `warnings` says so in the request's language.
+- CONTRACT ADDITION: an edit that changes nothing (confirming a confirmed position, the same confidence) answers 200
+  with `changed: []` and makes no commit. An unknown callout index answers `404`.
 - One commit per edit, message `App: <what> (<note>)`, e.g. `App: confirm position 2 (Colonialism)`.
 - Conflicts with a push from elsewhere: pull with rebase and push again; a real conflict undoes the edit and answers `409`.
+  CONTRACT ADDITION: when the sync loop cannot replay an app commit that was still waiting for GitHub (a real
+  conflict with an edit from elsewhere), the commit is kept on the branch `arestoteles-app/conflict-<time>` (pushed
+  when GitHub is reachable) and the clone follows GitHub; nothing is lost, nothing is merged by guesswork.
+
+## Language
+
+Requests send `Accept-Language` (ares-empire/docs/LANGUAGES.md): German when the highest-weighted `de`/`en` tag is
+German, otherwise English. Every answer sets `Content-Language: de|en` (and `Vary: Accept-Language`). The language
+applies only to the server's own sentences: every `error`, and the warnings the server writes itself (check skipped).
+The vault check's own warning lines, all vault content (titles, text, glossary), ids, codes and dates never change.
 
 ## Samples
 

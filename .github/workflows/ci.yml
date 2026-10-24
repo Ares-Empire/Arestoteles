@@ -10,11 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-python@v5
         with:
-          enable-cache: true
-      - run: uv sync --frozen
-      - run: uv run ruff check .
-      - run: uv run ruff format --check .
-      # No live network calls in CI: parsers run against recorded fixtures (docs/08 §1)
-      - run: uv run pytest
+          python-version: "3.13"   # the server's Python
+      - run: ruby --version         # the made-up test vault's check runs with it
+      - run: python -m pip install -q -e '.[dev]'
+      # No network in the tests: a temporary git remote, a fake PocketBase, a stub market-data client.
+      - run: python -m pytest -q

@@ -7,7 +7,7 @@ import pytest
 from arestoteles.inline import Resolver, find_links, plain, to_text
 from arestoteles.reader import callout_spans, read
 
-IDS = ["Printing press", "Weimar's labour compromise", "Spread of print", "A_b (c)", "Did print cause it"]
+IDS = ["Printing press", "Luther's ninety-five theses", "Spread of print", "A_b (c)", "Did print cause it"]
 resolve = Resolver(IDS)
 
 
@@ -21,8 +21,8 @@ def note(body: str, path: str = "Library/Mechanisms/Made up.md", ids=IDS, frontm
     ("see [[Printing press|the press]].", "see [the press](arestoteles://note/Printing%20press)."),
     ("[[Printing press#My position]]",
      "[Printing press > My position](arestoteles://note/Printing%20press#My%20position)"),
-    ("[[Weimar's labour compromise]]",
-     "[Weimar's labour compromise](arestoteles://note/Weimar%27s%20labour%20compromise)"),
+    ("[[Luther's ninety-five theses]]",
+     "[Luther's ninety-five theses](arestoteles://note/Luther%27s%20ninety-five%20theses)"),
     ("[[A_b (c)]]", "[A\\_b (c)](arestoteles://note/A_b%20%28c%29)"),
     ("[[printing press]]", "[printing press](arestoteles://note/Printing%20press)"),       # Obsidian ignores case
     ("[[Topics/Printing press/Printing press]]",

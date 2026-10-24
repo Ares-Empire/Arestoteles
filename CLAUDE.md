@@ -1,207 +1,66 @@
-# CLAUDE.md — Arestoteles
+# Arestoteles — notes for Claude
 
-Context for Claude Code sessions working in this repo. Read `README.md` for the doc map.
+The Weltbild province: the server of the **Arestoteles iPhone app** (`empire-ios/Arestoteles`) and the website
+arestoteles.de. Read first: `~/ares-empire/EMPIRE.md` (the empire's map, "How we build apps"),
+`~/ares-empire/docs/ARESTOTELES-APP.md` (why, and the settled decisions), `docs/API.md` (the contract; keep
+`docs/samples/` valid when it changes), and the vault's own `CLAUDE.md` (its rules are what the edits apply).
 
-## What this is
+## What it is
 
-AI-assisted swing/position portfolio manager for semiconductors + AI infrastructure.
-Claude researches news via curated sources, writes evidence-backed theses, proposes decisions
-as structured JSON; a **deterministic Python risk engine** validates them and places orders via
-broker API (Alpaca paper first). **Core method: big-picture structural reasoning over a
-value-chain graph** — trace demand/capital flows, structural moats, and systemic/regime risk
-across the AI-infrastructure chain, *not* standalone single-company evaluation (docs/02 §2,
-docs/04 Layers 0 & 5 + the sector-regime view). Owner: Patrik (TUM student, side project, hobby
-budget).
-Today's phase and next steps: see "Status" below — keep it updated.
+One Python process (`python -m arestoteles`, FastAPI + uvicorn on `127.0.0.1:8099`) on the server, as root:
 
-## Non-negotiable guardrails (do not relax these in any session)
+- **Sync loop (60 s):** fetch the vault clone (`/var/lib/arestoteles/vault`), fast-forward or rebase app commits on
+  top, push what waits, rebuild the index when the commit changed. A local commit that cannot be replayed is kept on
+  a branch `arestoteles-app/conflict-<time>`; nothing is ever lost.
+- **API:** `GET /vault` (the whole index, ETag = commit), `GET /notes/{id}/source`, `POST /edits`, `GET /health`.
+  Login: the Empire token, service `arestoteles` (as Aresus).
 
-1. **The AI never places orders and never holds broker/API credentials.** Claude outputs
-   `DecisionDraft` JSON only. Order placement, sizing math, and limit checks are plain Python.
-2. **Risk rules live in code/config, not in prompts.** Prompts may be edited freely; the risk
-   engine in `config/config.example.toml` → `[risk]` is the enforcement layer and changes to it
-   require explicit user approval.
-3. **Numbers (prices, market caps, P/E, position sizes) come from structured APIs** (Alpaca,
-   EDGAR XBRL, yfinance), never parsed out of web search text.
-4. **Web content is untrusted input.** It is wrapped as data, never followed as instructions
-   (prompt-injection defense, see `docs/04`). Domain whitelist is in `config/universe.yaml`.
-5. **Fail closed.** If any pipeline stage errors or data looks stale, the run produces no
-   trades and sends a Telegram alert. Default action is always HOLD.
-6. **No secrets in the repo.** `.env` on the server only. Paper and live keys are separate env
-   vars; live keys must not exist anywhere until Phase 5 is approved by the user.
-7. **No shorts, no leverage, no options, no derivatives, no crypto, no microcaps, long-only**,
-   universe restricted to `config/universe.yaml`. Don't add instruments without user approval.
-8. **Spending caps are hard stops** (`[budgets]` in config): daily search cap and monthly EUR
-   cap. When exceeded, the system degrades to free-feeds-only mode and alerts.
+## Layout
 
-## Conventions
+```
+src/arestoteles/
+  inline.py     wikilinks, resolution, Text       notefile.py  frontmatter, body, blob hash
+  positions.py  position and history line rules  reader.py    one note file → Note (markdown-it-py + Obsidian)
+  index.py      the whole Vault                   edits.py     every edit op, pure (files in, files out)
+  check.py      the vault's check.rb              gitrepo.py   the git commands
+  service.py    state, sync loop, edit flow       api.py       routes        auth.py  Empire login
+  texts.py      English + German sentences        models.py    the contract as pydantic models
+  config.py     settings from the environment     main.py      start
+tests/   fixtures/vault/ (made up)   deploy/ (unit, Aresync hook, install steps)
+```
 
-- Python 3.12, `uv` for env/deps, `pydantic` models for all AI JSON I/O, `pytest`.
-- Claude API via official `anthropic` SDK. Models: Haiku 4.5 (triage), Sonnet 4.6 (research +
-  decisions), Opus 4.8 via Batch API (weekly deep review). Use prompt caching for the stable
-  system prompt + universe context; structured outputs (`output_config.format` /
-  `client.messages.parse`) for every decision-bearing call. Web search tool:
-  `web_search_20260209` with `allowed_domains` + `max_uses`.
-- Postgres 16 (Docker, on Hetzner). Schema sketch in `docs/03`. SQLAlchemy core or psycopg3.
-- Scheduling: systemd timers on the Hetzner host calling `docker compose run` oneshots; the
-  job itself checks the Alpaca market clock (handles US DST + holidays). Timezone anchor is
-  America/New_York, server is Europe/Berlin.
-- Telegram bot for notifications + approvals (same pattern as FlatSniper).
-- Every AI call logs tokens + cost into the `api_costs` table.
+## Rules
 
-## Status (update me at the end of every working session)
+- **Patrik's vault is his.** The real vault (`~/Documents/Patrik Breeck/Weltbild`) is read only for development:
+  never write to it, never copy its notes into this repo, a test or a log. `tests/test_real_vault.py` works on a
+  temporary copy and prints and asserts counts only. The fixture vault and the samples are made up.
+- Edits follow the vault's rules and live in `edits.py` with tests: positions keep bold, numbering, `→` links and
+  Positions.md's embeds; changed or dropped views go to "How my view changed" (with `, position N` so they attach to
+  their position); `updated` is set; quick notes are verbatim. The vault check's *new* errors undo an edit.
+- Everything that touches the clone runs under the service's lock; tests use a temporary bare remote, never GitHub.
+- Language: `~/ares-empire/docs/LANGUAGES.md`. All of the server's sentences are in `texts.py` (English and German);
+  vault content and the check's own lines are never translated. Every answer sets `Content-Language`.
+- No secrets in the repo: `.env` and `vault.env` are git-ignored; never log a token.
 
-- 2026-06-13: Phase 0 complete. All ten docs + universe + example config written. No code yet.
-- 2026-06-13: Core method set to big-picture structural / value-chain reasoning (vs. standalone
-  company analysis). Edited docs/02 §2, docs/04 (Layer 0 value-chain graph, Layer 5 analyst with
-  `chain` + `priced_in_check` fields, new sector-regime view), universe.yaml (value_chain_map,
-  downstream_candidates). Open: promote ORCL + add power/REIT downstream names? (cost vs.
-  coverage) — decide at first universe review. New DecisionDraft fields `chain` + `priced_in_check`
-  must be in the pydantic schema when Phase 2 is built.
-- 2026-06-13: ORCL promoted monitored→traded. Universe is now **extensible within the theme** via a
-  `node_promotion_gate` (large/mid-cap + liquid + dossier + whitelisted source + structural thesis)
-  — the system can trade any chain node it discovers that clears the gate (docs/02 §3a,
-  universe.yaml). Regime view expanded into a leading-indicator mosaic acting as a **gradual,
-  whole-chain de-risk dimmer** backstopped by mechanical stops (docs/04, docs/05). Design stance:
-  read *rising* bubble risk and de-risk progressively; do **not** try to time the break.
-- 2026-06-13: Replaced hardcoded downstream candidates with a general **chain-walking discovery**
-  rule (prioritized; `universe.yaml` chain_walking_discovery + docs/04). Added **correlated-cluster
-  discipline** (docs/05 + `[risk]` max_subcluster_pct_nav=35 / min_subclusters_when_invested=3):
-  walking a chain is the edge but builds a maximally-correlated book, so discovery walks freely
-  while sizing caps any single chain-link and requires ≥3 links — the diversification floor that
-  holds when the regime dimmer is late. Sub-cluster taxonomy = `value_chain_map.flows_to` groups.
-- 2026-06-13: **Phase 1 code complete** (repo: github.com/carlsenares/Arestoteles). Built: uv
-  scaffold + Docker compose (db/app/bot) + CI; full DB schema/migrations with api_costs from day
-  one; risk engine as pure functions with 70+ unit tests (run on the real example config); RSS
-  registry (56 feed URLs verified live, `scripts/verify_feeds.py` re-runs the check) + EDGAR
-  submissions/FTS pollers (shapes verified live, fixtures recorded); Alpaca read-only wrapper
-  (live test ready, needs keys); Telegram bot (/status /halt /resume); fail-closed runner +
-  morning_sweep/main_run/post_close; systemd timers + Hetzner runbook in deploy/. Smoke-tested
-  end to end locally incl. inside the Docker image (2607 events ingested, dedup to 0 on re-run,
-  /halt verified). Implementation decisions logged in commit messages, notably: explicit
-  `subcluster:` per traded name in universe.yaml (new `analog` bucket for TXN/ADI/ON);
-  min-subcluster floor encoded as distinct ≥ min(n_positions, k); earnings calendar = Finnhub
-  free tier and the engine REJECTS buys when the earnings date is unknown (fail closed);
-  EDGAR via data.sec.gov submissions JSON (successor of the Atom feeds); two YAML bugs fixed
-  (bare `ON` = boolean true; commas in monitored_only signal strings).
-  **Phase 1 exit still needs:** user keys (Alpaca paper, Telegram bot token+chat id, Finnhub;
-  Anthropic only at Phase 2), Hetzner deploy per deploy/README.md, one week unattended.
-- 2026-06-13: **Phase 1 keys landed and verified live.** Alpaca paper, Telegram, Finnhub added to
-  `.env` (ANTHROPIC_API_KEY deliberately left empty — Phase 2). Verified each end to end: Alpaca
-  paper round-trip (`pytest -m live`), Telegram getMe + a sent message, Finnhub earnings calendar.
-  Ran the **full local Docker deploy rehearsal** (deploy/README §1–2) on a clean volume: migrate →
-  preflight → morning_sweep (56/56 feeds, 2609 rss + 11 edgar + 3 price-move events) → re-run dedups
-  to 0 → main_run --force (HOLD, no brain) → post_close --force (paper NAV $100k, digest sent) → bot
-  connects (then stopped locally to avoid a dual-poller 409 against the future server). 114 tests
-  green, ruff clean. Added `arestoteles.preflight` (side-effect-free service-reachability check,
-  wired into deploy/README) + test; renamed the bust source asset and committed the avatar.
-  **Phase 1 exit now only needs the user:** Hetzner deploy (needs server access) + ~1 week unattended.
-  **Phase 2 stays gated on ANTHROPIC_API_KEY + an explicit budget go-ahead — not started.**
-- 2026-06-13: **DEPLOYED to the shared `InsureServer` host** (178.105.214.242 — same box as insureai +
-  aresium + flatsniper, NOT a standalone Hetzner host) at `/opt/arestoteles` (`/root/Arestoteles`
-  symlinks to it). Preflight all green (config/db/alpaca-paper/telegram @arestoteles1_bot/finnhub/edgar).
-  By-hand smoke test passed live on the server: morning_sweep (run 1: 2586 rss + 11 edgar + 3 move
-  events) → main_run --force (run 2: dedup to 0, HOLD) → post_close --force (run 3: paper NAV $100k,
-  digest sent). Bot up (sole Telegram poller now). 3 systemd timers enabled. **Two deviations from
-  deploy/README, both deliberate for the shared host:** (1) host TZ left at UTC; instead pinned
-  `Europe/Berlin` inside each timer's `OnCalendar` (systemd 259 supports it) so insureai/aresium/
-  flatsniper clocks are untouched — schedules verified identical (13:30 Berlin = 11:30 UTC). (2) the
-  arestoteles `db` has no host-port binding so it coexists with aresium's `127.0.0.1:5432` postgres.
-  **Known issue:** `rss:cnbc_tech` returns 403 from this server's IP (55/56 feeds ok; non-fatal warning).
-  **Phase 1 exit now only needs ~1 week unattended with the risk engine green.**
-- 2026-06-13: **Web/integration direction decided (docs/09 rewritten + new docs/11).** Resolved the
-  Aresium-read-pattern open decision: **read-only REST API** (not shared DB). Bigger call: Arestoteles
-  gets its **own epic broker-style site at its own domain `arestoteles.de`** sharing Aresium's exact
-  design language ("Ares Empire"), with only a **compact Investments overview card inside Aresium** that
-  deep-links across — supersedes the old "render Investments inside Aresium" plan. A **central Ares
-  manager/hub** is the adopted empire home + future SSO provider. Added a `/positions/{ticker}/bars`
-  endpoint (per-stock range graphs) and the deploy seam (insureai_nginx server block + the aresium
-  gateway/ufw gotchas). **SSO:** aresium.de & arestoteles.de are separate domains so no shared-cookie
-  trick — Arestoteles ships its **own custom login now** (port Aresium's scrypt+HMAC pattern), hub-SSO
-  later. docs/11 holds the design brief (depth bust-drop+crater intro, on-the-wall charts; refs =
-  Robinhood/Bloomberg/Linear; attach Aresium's files) + a copy-paste design prompt; the intro must be
-  built as working motion, not a static frame. **Caveat:** the API doesn't exist yet (pulls Phase-4
-  forward) and there are zero positions until Phase 2 — build the shell now, fills when the brain trades.
-- 2026-06-14: **Front-end shipped + deployed (HTTP) and CI fixed.** (1) **CI**: was red on every push
-  since `make_bust.py` landed — pinned ruff 0.15.17 flags an unused `PIL.ImageOps` import + formatting.
-  Fixed and on `main`. (2) **Site**: implemented the Claude-Design handoff (`Arestoteles.html`, a zero-build
-  CDN-React + Babel prototype: intro bust-drop onto a `dent2.png` crack-crater, red-mode mirror-shatter,
-  empty-by-default honest portfolio, per-stock + thesis views) verbatim into `web/`, served by a new
-  `web` nginx:alpine container (compose) bound to `172.18.0.1:5180` (same gateway pattern as aresium).
-  Added an additive `arestoteles.conf` vhost to insureai_nginx (validated, reloaded; insureares+aresium
-  unaffected). Confirmed serving for arestoteles.de + www through the gateway via Host header. (3) **Live
-  stats**: `scripts/refresh_quotes.py` (read-only Alpaca IEX snapshots+bars, fail-closed) writes
-  `web/live.json` for a 14-name semis/AI watchlist (NVDA…ARM + AAPL/MSFT/GOOGL/TSLA/AMZN); additive
-  `web/app/live.js` + a `WatchList` panel render it as **"live, not held"** inside the empty side-card so
-  the portfolio stays honestly empty. `arestoteles-quotes.timer` refreshes every 15 min (enabled, test-fired
-  OK). All 12 jsx/js transform-checked with Babel 7.29.0; full ruff gate green; `web/live.json` gitignored.
-  **LIVE over HTTPS at https://www.arestoteles.de** — `www` DNS propagated mid-session; issued a Let's
-  Encrypt cert (www only, expires 2026-09-12) via the insureai_certbot webroot and switched the vhost to
-  TLS (HTTP→https://www redirect; insureares+aresium reverified healthy). **Apex `arestoteles.de` does NOT
-  resolve yet** (user re-added A/AAAA 2026-06-14; only www had propagated) — HTTP/HTTPS on the apex will work
-  once it does, but the cert must be reissued with `--expand -d www.arestoteles.de -d arestoteles.de` and
-  the apex added to the 443 `server_name` (steps in the conf header; `deploy/enable-tls-arestoteles.sh`
-  covers the full both-names path). Mobile (`mobile.jsx`) still shows the design's bare empty state —
-  watchlist injection is desktop-only.
-- 2026-06-14: **Custom login gate added** (the docs/09 "own custom login now"). Ported Aresium's
-  scrypt + HMAC-signed-cookie scheme to Python, stdlib-only, in `webauth/server.py` — which now IS the
-  `web` container (python:3.12-alpine replacing the static nginx one): it serves `web/` and gates every
-  path behind a single-password login (`arestoteles_session` cookie, 30-day, HttpOnly/Secure/SameSite=Lax),
-  with an on-brand login page (marble bust, ARESTOTELES wordmark, glass card on the black wall). Open
-  paths: `/login`, `/logout`, `/brand/*` (the login visual), `/favicon`. `gen_password.py` mints the hash;
-  secrets live in `.env` as `AUTH_PASSWORD_HASH` (scrypt, **`:`-delimited not `$`** — docker compose
-  env_file interpolates `$`) + `AUTH_SESSION_SECRET` (gitignored, server-only). Fail-safe: gate is active
-  only when both are set, else serves open with a loud warning. Verified live over HTTPS: unauthed→302
-  /login, wrong pw→401, correct pw→302+cookie, authed→200, tampered cookie→rejected. ruff config gained a
-  per-file E501 ignore for the inline-HTML login page. Password is the user's; not in the repo.
-- 2026-06-14: **Front-end polish pass + Ares Empire hub seeded.** (1) **Favicon** = the Aristotle bust
-  (`<link rel=icon>` → `brand/aristotle-bust.png`; reachable unauthed via the `/brand/` open prefix).
-  (2) **Dropped the "AI-run semiconductor portfolio" tagline** everywhere user-facing: `index.html`
-  + `Arestoteles.html` titles → just "Arestoteles", login-page foot → "Paper portfolio"; **also in
-  Aresium** (`web/public/index.html` title → just "Aresium"). (3) **Logout button** added to the
-  Arestoteles header (ported Aresium's `/logout` icon-button, styled as `.btn-mode`). (4) **Intro
-  no-flash**: boot.jsx now decides *synchronously* (desktop only) whether the intro plays and adds
-  `.ares-booting` (inline `<style>` hides `#root`) before first paint; the intro reveals the app via a
-  new `onReveal` hook fired right as it starts its crossfade, so the bust-drop dissolves straight into
-  the UI — the portfolio never flashes first. (5) **Clickable live watchlist**: watchlist rows are now
-  buttons → new desktop `WatchDetail` view (price + trailing ~30 daily closes chart from `live.json`,
-  marked "live, not held") so any sector name (NVDA…) is browsable; honest empty book unchanged.
-  (6) **Hub button**: removed the red status-dot + "›" chevron, relabelled **"Ares Empire"**. Created
-  **`/root/ares-empire/`** (sibling to aresium/arestoteles) = the empire hub/SSO home: `README.md`
-  (name decision **"Ares Empire"** over bare "Ares"; service-overview plan) + `brand/LOGO_PROMPT.md`
-  (logo direction = **white-marble Ares bust, Corinthian helmet pushed back, bearded, hint of armor** —
-  artwork deferred to Claude Design; drop result at `brand/ares-bust.png`, then swap the wordmark button
-  for mark+wordmark). All 5 edited jsx/js babel-parse clean; `server.py` py_compile clean; web container
-  restarted, changes verified live over the gateway. Static `web/` is bind-mounted ro so it's live on
-  refresh. **Note:** watchlist click-through is desktop-only (mobile.jsx still bare empty state).
+## Test and run
 
-## Open decisions (user must answer; do not assume)
+```bash
+python3 -m venv .venv && .venv/bin/pip install -e '.[dev]'
+.venv/bin/python -m pytest -q          # needs git and ruby; the real-vault test runs only on Patrik's Mac
+ARESTOTELES_VAULT=/tmp/vault-copy ARESTOTELES_PULL=0 ARESTOTELES_PUSH=0 .venv/bin/python -m arestoteles
+```
 
-1. **Live broker** (Phase 5): Alpaca international vs. IBKR — depends on funding fees from a
-   German bank account (Alpaca is USD-only via wire/Rapyd; IBKR takes free SEPA). Not urgent.
-2. **Capital for live phase** and the monthly loss cap that triggers shutdown.
-3. ~~Aresium read pattern~~ — **decided: read-only REST API**; **domain `arestoteles.de`**; own
-   custom login now + central-hub SSO later (docs/09). Remaining: build the central Ares manager/hub.
+## The website (arestoteles.de)
 
-## Next steps
-
-Phase 1 is built and locally rehearsed; the remaining Phase 1 work is operational, not code:
-
-1. **Deploy to Hetzner** (needs server access). Per `deploy/README.md`: clone to `/opt/arestoteles`,
-   `cp .env.example .env` + fill the three Phase-1 key sets, `cp config/config.example.toml
-   config/config.toml`, set TZ Europe/Berlin, `docker compose build && up -d db`, migrate, **run
-   `docker compose run --rm app python -m arestoteles.preflight`** (must be all green), `up -d bot`,
-   then enable the three systemd timers.
-2. **Let the free-layer pollers run unattended for ~1 week** with the risk engine green = Phase 1
-   exit (docs/10).
-3. **Phase 2 (AI brain, shadow mode) — only after the user provides `ANTHROPIC_API_KEY` and approves
-   the ~€45–80/mo budget.** Build per docs/04: Haiku triage → Sonnet research (whitelisted
-   `web_search`) → evidence packs with citations → skeptic pass → `DecisionDraft` JSON (must include
-   the `chain` + `priced_in_check` fields) → risk engine → Telegram approval, logging `api_costs` on
-   every call. The attach seam is `runs/main_run.py`; it runs `--no-orders` (shadow) first per docs/08.
-
-## Verify-before-use
-
-URLs of RSS feeds / EDGAR endpoints in `docs/04` are written from knowledge and marked
-"verify at implementation". Confirm each one with a real request before depending on it.
-Broker facts (fees, eligibility) were checked June 2026 — re-verify at Phase 5.
+- `web/` is the Claude-Design portal (zero-build React from CDN, `docs/11-web-frontend.md`), served by the compose
+  `web` container (`python:3.12-alpine` running `webauth/server.py`, stdlib only), bound to `172.18.0.1:5180` for the
+  shared `insureai_nginx` proxy, which holds the vhost and TLS (`deploy/enable-tls-arestoteles.sh`).
+- Login gate: `AUTH_PASSWORD_HASH` (scrypt, `:`-delimited, made with `webauth/gen_password.py`) and
+  `AUTH_SESSION_SECRET` in `.env`; the gate is active only when both are set. `SSO_SECRET` accepts the hub's hand-off
+  tokens. Open paths: `/login`, `/logout`, `/brand/*`, `/favicon`.
+- `web/` is mounted read-only, so a pulled change is live on reload; `webauth/server.py` needs the container
+  recreated (the Aresync hook does it).
+- `web/live.json` (git-ignored) is the watchlist feed: `arestoteles-quotes.timer` runs `scripts/refresh_quotes.py`
+  every 15 min in the `arestoteles-app:latest` image (`deploy/quotes.Dockerfile`), read-only Alpaca market data,
+  fail-closed (a failed refresh leaves the last file).
+- The server checkout is `/opt/arestoteles` (`/root/Arestoteles` links to it); deploy steps in `deploy/README.md`.

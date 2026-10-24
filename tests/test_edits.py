@@ -154,7 +154,7 @@ def test_add_position_creates_the_section_and_the_embed(client, world, service):
     (world.laptop / "Topics" / "Paper").mkdir()
     (world.laptop / "Topics" / "Paper" / "Paper.md").write_text(
         "---\ntype: topic\nconfidence: shaky\ncreated: 2026-10-01\nupdated: 2026-10-01\n---\n# Paper\n\n"
-        "> [!summary]\n> Paper came from China.\n\n## 1. Mills\nMills spread north.\n", encoding="utf-8")
+        "> [!summary]\n> Paper came from far away.\n\n## 1. Mills\nMills spread north.\n", encoding="utf-8")
     git(world.laptop, "add", "-A")
     git(world.laptop, "commit", "-qm", "A new topic")
     git(world.laptop, "push", "-q")
@@ -163,7 +163,7 @@ def test_add_position_creates_the_section_and_the_embed(client, world, service):
     assert answer.status_code == 200
     assert answer.json()["changed"] == ["Paper", "Positions"]
     assert file(world, "Topics/Paper/Paper.md").split("---\n", 2)[2] == (
-        "# Paper\n\n> [!summary]\n> Paper came from China.\n\n## My position\n"
+        "# Paper\n\n> [!summary]\n> Paper came from far away.\n\n## My position\n"
         "1. **Paper was the bottleneck.** → [[Gutenberg Bible]]\n\n## 1. Mills\nMills spread north.\n")
     assert file(world, "Positions.md").endswith("### Printing press\n![[Printing press#My position]]\n\n"
                                                 "### Paper\n![[Paper#My position]]\n")

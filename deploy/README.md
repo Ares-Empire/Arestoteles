@@ -1,71 +1,126 @@
-# Deploying to the Hetzner host
+# Deploying Arestoteles
 
-Phase 1 target (docs/10): pollers run unattended for a week; risk engine green.
-Server TZ must be `Europe/Berlin` (the timers assume it): `timedatectl set-timezone Europe/Berlin`.
+Two parts on the empire's server, both from the checkout `/root/Arestoteles` (a symlink to `/opt/arestoteles`):
 
-## 1. First-time setup
+- **The vault service** (`arestoteles.service`, root): `python -m arestoteles` on `127.0.0.1:8099`, the API of the
+  iPhone app (`docs/API.md`). It keeps its own clone of the vault (`carlsenares/opinions`) in
+  `/var/lib/arestoteles/vault`, pulls every 60 s and pushes the app's edits. Caddy routes
+  `https://www.ares-empire.de/api/arestoteles/*` to it. Needs PocketBase (`127.0.0.1:8090`) for the app's login, `git`,
+  `ssh` and `ruby` (the vault's own check; without Ruby edits still work and say the check was skipped).
+- **The website** arestoteles.de, unchanged: the compose `web` container (`webauth/server.py` serving `web/`) and the
+  quote refresher (`arestoteles-quotes.timer`, below).
 
-```bash
-# as root or a docker-capable user
-git clone https://github.com/carlsenares/Arestoteles.git /opt/arestoteles
-cd /opt/arestoteles
-
-cp .env.example .env && chmod 600 .env
-# fill in: ALPACA_PAPER_KEY/SECRET, TELEGRAM_BOT_TOKEN/CHAT_ID, EDGAR_USER_AGENT,
-#          FINNHUB_API_KEY; ANTHROPIC_API_KEY stays empty until Phase 2.
-# DATABASE_URL stays as in the example (compose-internal postgres).
-
-cp config/config.example.toml config/config.toml   # tune only with care: [risk] is the enforcement layer
-
-docker compose build
-docker compose up -d db
-docker compose run --rm app python -m arestoteles.db.migrate
-docker compose run --rm app python -m arestoteles.preflight   # verify .env reaches every service
-docker compose up -d bot         # then send /status to the bot to verify
-```
-
-`preflight` is side-effect-free (no orders, no messages, no DB writes) and exits non-zero if any
-configured service is unreachable — run it anytime you change `.env`.
-
-## 2. Smoke test by hand (before enabling timers)
+## First install of the vault service
 
 ```bash
-docker compose run --rm app python -m arestoteles.runs.morning_sweep
-# expect: runs row ok, events ingested; check via psql or /status
-docker compose run --rm app python -m arestoteles.runs.main_run --force
-docker compose run --rm app python -m arestoteles.runs.post_close --force   # needs Alpaca keys; sends the digest
+# 1. The vault clone, with the deploy key added on 2026-10-24 (read + write; adjust the key's file name)
+install -d -m 700 /var/lib/arestoteles
+GIT_SSH_COMMAND='ssh -i /root/.ssh/opinions_deploy -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new' \
+  git clone git@github.com:carlsenares/opinions.git /var/lib/arestoteles/vault
+git -C /var/lib/arestoteles/vault config core.sshCommand 'ssh -i /root/.ssh/opinions_deploy -o IdentitiesOnly=yes'
+ruby --version                                  # the check needs it (apt install ruby if missing)
+
+# 2. The code: main with this branch merged
+cd /root/Arestoteles && git pull --ff-only
+python3 -m venv .venv && .venv/bin/pip install -q -e .   # editable: a pulled change needs only a restart
+
+# 3. The unit
+cp deploy/arestoteles.service /etc/systemd/system/
+systemctl daemon-reload && systemctl enable --now arestoteles.service
+curl -s http://127.0.0.1:8099/api/arestoteles/health     # {"ok":true,"commit":"…","pulled":"…Z","pushed":true,"notes":…}
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8099/api/arestoteles/vault   # 401 without a token
+journalctl -u arestoteles -n 20                          # "vault built at …: N notes, M unresolved link targets"
 ```
 
-## 3. Schedules (systemd timers)
+Settings (all optional; the defaults fit this server) go in `/root/Arestoteles/vault.env`: `ARESTOTELES_VAULT`
+(`/var/lib/arestoteles/vault`), `EMPIRE_AUTH_URL` (`http://127.0.0.1:8090`), `HOST`/`PORT` (`127.0.0.1`/`8099`),
+`ARESTOTELES_SYNC_INTERVAL` (60), `ARESTOTELES_PULL`/`ARESTOTELES_PUSH` (1; 0 turns fetching/pushing off),
+`ARESTOTELES_RUBY` (`ruby`), `ARESTOTELES_TZ` (`Europe/Berlin`).
+
+## Caddy
+
+In `/etc/caddy/Caddyfile`, inside the `ares-empire.de, www.ares-empire.de` site, **before** the hub's catch-all, next
+to the Aresus block:
+
+```caddy
+handle /api/arestoteles/* {
+	reverse_proxy 127.0.0.1:8099
+}
+```
+
+Then `caddy validate --config /etc/caddy/Caddyfile && systemctl reload caddy`, and from anywhere:
+`curl -s https://www.ares-empire.de/api/arestoteles/health`.
+
+## Updates (Aresync)
 
 ```bash
-cp deploy/systemd/*.service deploy/systemd/*.timer /etc/systemd/system/
-systemctl daemon-reload
-systemctl enable --now arestoteles-morning.timer arestoteles-main.timer arestoteles-postclose.timer
-systemctl list-timers 'arestoteles-*'
+cp /root/Arestoteles/deploy/aresync-hook /root/aresync/hooks/Arestoteles && chmod +x /root/aresync/hooks/Arestoteles
+grep REPOS /root/aresync/config        # "Arestoteles" must be listed, so Aresync pulls the checkout
 ```
 
-| Timer | When (Berlin) | Run |
-|---|---|---|
-| arestoteles-morning | Mon–Fri 07:30 | `runs.morning_sweep` (ingest; no market gate) |
-| arestoteles-main | Mon–Fri 13:30 | `runs.main_run` (market-gated via Alpaca clock) |
-| arestoteles-postclose | Mon–Fri 22:15 | `runs.post_close` (market-gated; digest 22:15+) |
+After each pull of a new commit the hook reinstalls when `pyproject.toml` changed, restarts `arestoteles.service`,
+and recreates the `web` container when `webauth/server.py` or `docker-compose.yml` changed (`web/` itself is live on
+pull). The vault is not deployed by Aresync: the service pulls it itself.
 
-Weekly/monthly review timers arrive with Phase 2 (they need the AI pipeline).
+## Aresus (the province becomes active)
 
-## 4. Updating
+Replace the `arestoteles` entry in `aresus/checks.yaml` (Aresus re-reads it without a restart):
+
+```yaml
+  - slug: arestoteles
+    name: Arestoteles
+    expect: active
+    line:
+      en: "{health.notes} notes · last pull {health.pulled|ago}"
+      de: "{health.notes} Notizen · letzter Pull {health.pulled|ago}"
+    checks:
+      - unit: arestoteles.service
+        name: Server
+        name_de: Server
+      - json: https://www.ares-empire.de/api/arestoteles/health
+        id: health
+        name: Vault API
+        name_de: Vault-API
+      - container: arestoteles-web-1
+        name: Web container
+        name_de: Web-Container
+      - http: https://www.arestoteles.de/
+        id: website
+        status: [302, 200]
+      - deploy: /root/Arestoteles
+```
+
+`/health` answers `ok: false` when pulls or pushes have failed for more than 10 minutes, so the json check turns the
+province into an Issue then.
+
+## Removing the trading bot (once, on the server)
+
+What the old deploy files created (check what exists before removing):
 
 ```bash
-cd /opt/arestoteles && git pull && docker compose build && \
-  docker compose run --rm app python -m arestoteles.db.migrate && \
-  docker compose up -d bot
+# the three trading timers and their services
+systemctl disable --now arestoteles-morning.timer arestoteles-main.timer arestoteles-postclose.timer
+rm /etc/systemd/system/arestoteles-{morning,main,postclose}.{service,timer} && systemctl daemon-reload
+
+# the Telegram bot and the database containers (compose services `bot` and `db`), and the ledger volume
+docker exec arestoteles-db-1 pg_dump -U arestoteles arestoteles | gzip > /root/arestoteles-ledger-2026-10-24.sql.gz  # optional backup
+docker stop arestoteles-bot-1 arestoteles-db-1 && docker rm arestoteles-bot-1 arestoteles-db-1
+docker volume rm arestoteles_pgdata
 ```
 
-## 5. Operations
+Keep: the `web` container, `arestoteles-quotes.timer`/`.service`, the image `arestoteles-app:latest` (the quote
+refresher runs in it) and the network `arestoteles_default`. In `/opt/arestoteles/.env` only the website's keys are still
+used (`AUTH_PASSWORD_HASH`, `AUTH_SESSION_SECRET`, `SSO_SECRET`, `ALPACA_PAPER_KEY`, `ALPACA_PAPER_SECRET`); the trading
+ones (`DATABASE_URL`, `TELEGRAM_*`, `ANTHROPIC_API_KEY`, `ARESIUM_API_TOKEN`, `EDGAR_USER_AGENT`, `FINNHUB_API_KEY`) can
+go, as can the git-ignored `config/config.toml`, `data/` and `logs/` if present. The Telegram bot account itself
+(BotFather) is Patrik's to delete.
 
-- Kill switch: send `/halt` to the bot (every run checks the flag first); `/resume` clears.
-- Logs: `journalctl -u arestoteles-main.service -n 100`; bot/db: `docker compose logs`.
-- Failure policy: any failed stage ⇒ runs row `failed` + Telegram alert + no trades.
-- Optional: add a healthchecks.io ping as `ExecStartPost` per service.
-- Backups: `pgdata` volume holds the ledger — snapshot it (Hetzner volume snapshot or
-  `docker compose exec db pg_dump -U arestoteles arestoteles | gzip > backup.sql.gz` via cron).
+## The website
+
+- `docker compose up -d web` serves arestoteles.de (TLS and the vhost live in the shared nginx: see
+  `deploy/enable-tls-arestoteles.sh` and `docs/11-web-frontend.md`). Login secrets come from `.env` (`.env.example`).
+- The quote refresher: `deploy/systemd/arestoteles-quotes.{service,timer}` (every 15 min) runs
+  `scripts/refresh_quotes.py` in the image `arestoteles-app:latest` and writes `web/live.json`. The script needs only
+  `alpaca-py` and the two paper keys. To rebuild the image small (it was built from the old trading code):
+  `docker build -t arestoteles-app:latest - < deploy/quotes.Dockerfile`, then `systemctl start arestoteles-quotes` and
+  `journalctl -u arestoteles-quotes -n 5` ("wrote …/live.json (14 quotes …)").
