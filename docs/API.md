@@ -126,6 +126,8 @@ interface Position {
   note: string;                   // the note it is written on (a topic overview, or "Positions")
   number: number;                 // its number in that list (1, 2, …)
   text: Text;                     // the sentence without its bold markers, "(draft)" and the → links
+  title: Text;                    // CONTRACT ADDITION (2026-10-24, short cards): the bold part alone, without a trailing
+                                  // ",", ";" or ":"; the whole text when nothing or everything is bold
   draft: boolean;                 // marked "(draft)": worded by Claude, not yet confirmed by Patrik
   evidence: string[];             // note ids from the "→ [[…]], [[…]]" part
   history: { date: string; text: Text; why: Text | null }[];   // from the note's "## How my view changed", newest first

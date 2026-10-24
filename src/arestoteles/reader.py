@@ -432,7 +432,8 @@ def _positions(lines: list[str], note_id: str, resolve: Resolver, across: bool) 
         mine = sorted((e for e in history if e.position == number), key=lambda e: e.date, reverse=True)
         out.append({
             "id": f"{note_id}#{number}", "note": note_id, "number": number,
-            "text": to_text(item.text, resolve, note_id), "draft": item.draft,
+            "text": to_text(item.text, resolve, note_id), "title": to_text(item.title, resolve, note_id),
+            "draft": item.draft,
             "evidence": resolved_ids(find_links(item.evidence or ""), resolve),
             "history": [{"date": e.date, "text": to_text(e.text, resolve, note_id),
                          "why": to_text(e.why, resolve, note_id) if e.why else None} for e in mine],

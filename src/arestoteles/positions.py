@@ -21,6 +21,7 @@ HEADING = re.compile(r"^(#{1,6})[ \t]+(.*?)[ \t]*#*[ \t]*$")
 ITEM = re.compile(r"^(\d{1,9})([.)])[ \t]+(.*)$")
 BULLET = re.compile(r"^[-*+][ \t]+")
 DRAFT = re.compile(r"[ \t]*[*_]?\(draft\)[*_]?", re.I)
+BOLD = re.compile(r"\*\*(.+?)\*\*")
 ENTRY = re.compile(r"^[-*+][ \t]+\*\*(\d{4}-\d{2}-\d{2})(?:,[ \t]*position[ \t]+(\d+))?:?\*\*:?[ \t]*(.*)$")
 ENTRY_POSITION = re.compile(r"^([-*+][ \t]+\*\*\d{4}-\d{2}-\d{2}),[ \t]*position[ \t]+(\d+)(:?\*\*)")
 
@@ -76,6 +77,16 @@ class Item:
     def text(self) -> str:
         """The position's words in source form: without bold markers, "(draft)" and the arrow part."""
         return re.sub(r"\s{2,}", " ", DRAFT.sub("", self.sentence).replace("**", "")).strip()
+
+    @property
+    def title(self) -> str:
+        """The position in short: its bold part ("**Business wants labour as powerless as possible,** even if …" →
+        "Business wants labour as powerless as possible"), without a trailing comma, semicolon or colon; the whole text
+        when it has no bold part or is bold throughout."""
+        bold = BOLD.search(DRAFT.sub("", self.sentence))
+        if not bold:
+            return self.text
+        return re.sub(r"\s{2,}", " ", bold.group(1)).strip().rstrip(",;:").strip() or self.text
 
 
 def items(lines: list[str], span: tuple[int, int]) -> list[Item]:

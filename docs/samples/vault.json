@@ -1042,6 +1042,7 @@
           "note": "Positions",
           "number": 1,
           "text": "Who controls the copies controls the argument.",
+          "title": "Who controls the copies controls the argument.",
           "draft": false,
           "evidence": [
             "Information wants to be cheap",
@@ -1060,6 +1061,7 @@
           "note": "Printing press",
           "number": 1,
           "text": "Print did not cause the Reformation, but it made it impossible to stop.",
+          "title": "Print did not cause the Reformation, but it made it impossible to stop.",
           "draft": false,
           "evidence": [
             "Did print cause the Reformation",
@@ -1078,6 +1080,7 @@
           "note": "Printing press",
           "number": 2,
           "text": "Printers were businessmen first; they printed what sold.",
+          "title": "Printers were businessmen first; they printed what sold.",
           "draft": true,
           "evidence": [
             "Information wants to be cheap"

@@ -259,6 +259,7 @@ class Position(_Strict):
     note: str
     number: int
     text: str
+    title: str
     draft: bool
     evidence: list[str]
     history: list[HistoryEntry]

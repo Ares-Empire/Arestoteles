@@ -140,7 +140,8 @@ Intro line.
 - **2026-10-21:** I thought: A dropped view. What changed it: Gone.
 """, path="Topics/Topic/Topic.md", frontmatter="type: topic\nconfidence: solid")
     first, second, third = p.positions
-    assert first == {"id": "Topic#1", "note": "Topic", "number": 1, "text": "First view.", "draft": False,
+    assert first == {"id": "Topic#1", "note": "Topic", "number": 1, "text": "First view.", "title": "First view.",
+                     "draft": False,
                      "evidence": ["Printing press"], "history": [
                          {"date": "2026-10-22", "text": "Older words", "why": None},
                          {"date": "2026-10-20", "text": "Old one.", "why": "A reason."}]}
@@ -204,3 +205,12 @@ def test_inbox_state():
     assert inbox('type: inbox\nkind: later\nabout: "[[Spread of print]]"\nposition: true') == {
         "status": "new", "kind": "note", "about": "Spread of print", "position": None}
     assert note("# M\n").note["inbox"] is None
+
+
+def test_position_title_is_the_bold_part():
+    from arestoteles.positions import Item
+    item = Item(0, 1, ".", "**Business wants labour as powerless as possible,** even if many suffer. → [[A]]")
+    assert item.title == "Business wants labour as powerless as possible"
+    assert item.text == "Business wants labour as powerless as possible, even if many suffer."
+    assert Item(0, 1, ".", "**All of it is bold.** *(draft)*").title == "All of it is bold."
+    assert Item(0, 1, ".", "No bold at all.").title == "No bold at all."
