@@ -23,7 +23,7 @@ as `Patrik Breeck (Arestoteles app) <287037715+carlsenares@users.noreply.github.
 
 | Route | Answer |
 |---|---|
-| `GET /vault` | `Vault`, the whole index. `ETag` = the vault commit; `If-None-Match` → `304`. |
+| `GET /vault` | `Vault`, the whole index. `ETag` = the vault commit plus the index's shape version (`"8db2491-2"`, CONTRACT ADDITION: a server update that adds fields reaches phones without a vault change); `If-None-Match` → `304`. |
 | `GET /notes/{id}/source` | `{id, version, markdown}`: the note's body as Markdown (without frontmatter), for the free editor. |
 | `POST /edits` `Edit` | `EditResult`. |
 | `GET /health` | **no login** (for Aresus): `{"ok": bool, "commit": string, "pulled": "…Z", "pushed": bool, "notes": n}`; `ok` is false when the last pull or push failed for more than 10 minutes. |

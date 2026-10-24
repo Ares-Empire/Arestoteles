@@ -39,6 +39,10 @@ def _json(data: object, status: int = 200, headers: dict | None = None) -> Respo
     return Response(body, status_code=status, media_type="application/json", headers=headers)
 
 
+# Bumped whenever the index's shape changes (a new field), so phones holding the same vault commit fetch it again.
+INDEX_SHAPE = "2"
+
+
 def _etag_matches(header: str | None, etag: str) -> bool:
     if not header:
         return False
@@ -102,7 +106,7 @@ def create_app(service: VaultService, run_loops: bool = False) -> FastAPI:
     @router.get("/vault")
     def vault(if_none_match: str | None = Header(default=None), _: Access = Depends(app_user)) -> Response:
         current = built()
-        etag = f'"{current.commit}"'
+        etag = f'"{current.commit}-{INDEX_SHAPE}"'
         if _etag_matches(if_none_match, etag):
             return Response(status_code=304, headers={"ETag": etag})
         return Response(current.body, media_type="application/json", headers={"ETag": etag})

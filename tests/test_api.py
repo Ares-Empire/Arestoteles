@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from arestoteles.api import create_app
+from arestoteles.api import INDEX_SHAPE, create_app
 from arestoteles.texts import TEXTS, language, text
 
 from conftest import APP
@@ -99,14 +99,14 @@ def test_every_text_has_both_languages():
 def test_etag_and_304(client, service):
     first = client.get(BASE + "/vault", headers=APP)
     etag = first.headers["ETag"]
-    assert etag == f'"{service.repo.head(short=True)}"'
+    assert etag == f'"{service.repo.head(short=True)}-{INDEX_SHAPE}"'
     for header in (etag, f"W/{etag}", f'"other", {etag}', "*"):
         again = client.get(BASE + "/vault", headers={**APP, "If-None-Match": header})
         assert (again.status_code, again.content, again.headers["ETag"]) == (304, b"", etag)
     assert client.get(BASE + "/vault", headers={**APP, "If-None-Match": '"old"'}).status_code == 200
     edited = client.post(BASE + "/edits", json={"op": "confirm_position", "position": "Printing press#2"}, headers=APP)
     assert client.get(BASE + "/vault", headers={**APP, "If-None-Match": etag}).status_code == 200
-    assert client.get(BASE + "/vault", headers=APP).headers["ETag"] == f'"{edited.json()["vault"]["commit"]}"'
+    assert client.get(BASE + "/vault", headers=APP).headers["ETag"] == f'"{edited.json()["vault"]["commit"]}-{INDEX_SHAPE}"'
 
 
 def test_health_needs_no_login(client, service):
