@@ -74,7 +74,7 @@ the search answers with `"meaning": false`, later pulls embed only the changed p
 the Mac (median, ranking included). Check on the server once the first embedding is logged:
 `systemctl show arestoteles -p MemoryCurrent` (compare with the number before the update). More than about 600 MB
 above it: `ARESTOTELES_SEARCH_MODEL=off` in `vault.env` and a restart turns the meaning side off (the words still
-answer), or try `jina-v2-base-de-int8` (`fetch --model …`).
+answer); none of the other candidates below needs less memory.
 
 **Why this model** (`scripts/search_eval.py`, 2026-10-24, on the MacBook with 2 threads; 24 queries on the fixture
 vault in English and German: other words than the note, figures, sources, terms, plus 3 the vault cannot answer;
