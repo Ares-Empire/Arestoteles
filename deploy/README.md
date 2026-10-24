@@ -13,11 +13,12 @@ Two parts on the empire's server, both from the checkout `/root/Arestoteles` (a 
 ## First install of the vault service
 
 ```bash
-# 1. The vault clone, with the deploy key added on 2026-10-24 (read + write; adjust the key's file name)
+# 1. The vault clone (done 2026-10-24): the deploy key /root/.ssh/weltbild_deploy (read + write) is used through the
+#    host alias github-weltbild in /root/.ssh/config, so the clone needs no sshCommand setting.
 install -d -m 700 /var/lib/arestoteles
-GIT_SSH_COMMAND='ssh -i /root/.ssh/opinions_deploy -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new' \
-  git clone git@github.com:carlsenares/opinions.git /var/lib/arestoteles/vault
-git -C /var/lib/arestoteles/vault config core.sshCommand 'ssh -i /root/.ssh/opinions_deploy -o IdentitiesOnly=yes'
+git clone github-weltbild:carlsenares/opinions.git /var/lib/arestoteles/vault
+git -C /var/lib/arestoteles/vault config user.name "Patrik Breeck (Arestoteles app)"
+git -C /var/lib/arestoteles/vault config user.email "287037715+carlsenares@users.noreply.github.com"
 ruby --version                                  # the check needs it (apt install ruby if missing)
 
 # 2. The code: main with this branch merged
@@ -117,8 +118,8 @@ go, as can the git-ignored `config/config.toml`, `data/` and `logs/` if present.
 
 ## The website
 
-- `docker compose up -d web` serves arestoteles.de (TLS and the vhost live in the shared nginx: see
-  `deploy/enable-tls-arestoteles.sh` and `docs/11-web-frontend.md`). Login secrets come from `.env` (`.env.example`).
+- `docker compose up -d web` serves arestoteles.de; Caddy on the host (`/etc/caddy/Caddyfile`, since 2026-10-21)
+  holds the vhost and TLS (`docs/11-web-frontend.md` describes the site). Login secrets come from `.env` (`.env.example`).
 - The quote refresher: `deploy/systemd/arestoteles-quotes.{service,timer}` (every 15 min) runs
   `scripts/refresh_quotes.py` in the image `arestoteles-app:latest` and writes `web/live.json`. The script needs only
   `alpaca-py` and the two paper keys. To rebuild the image small (it was built from the old trading code):

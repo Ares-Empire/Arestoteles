@@ -54,7 +54,7 @@ ARESTOTELES_VAULT=/tmp/vault-copy ARESTOTELES_PULL=0 ARESTOTELES_PUSH=0 .venv/bi
 
 - `web/` is the Claude-Design portal (zero-build React from CDN, `docs/11-web-frontend.md`), served by the compose
   `web` container (`python:3.12-alpine` running `webauth/server.py`, stdlib only), bound to `172.18.0.1:5180` for the
-  shared `insureai_nginx` proxy, which holds the vhost and TLS (`deploy/enable-tls-arestoteles.sh`).
+  host's Caddy (`/etc/caddy/Caddyfile`), which holds the vhost and TLS.
 - Login gate: `AUTH_PASSWORD_HASH` (scrypt, `:`-delimited, made with `webauth/gen_password.py`) and
   `AUTH_SESSION_SECRET` in `.env`; the gate is active only when both are set. `SSO_SECRET` accepts the hub's hand-off
   tokens. Open paths: `/login`, `/logout`, `/brand/*`, `/favicon`.
