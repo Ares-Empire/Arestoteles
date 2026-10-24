@@ -25,6 +25,12 @@ class Settings:
     push: bool = True    # off: commit edits but never push (a local copy)
     ruby: str = "ruby"
     timezone: str = "Europe/Berlin"
+    # search (docs/API.md → Search): the meaning model's files, fetched by `python -m arestoteles.meaning fetch`,
+    # and the passages' embeddings kept by text hash, so a pull re-embeds only what changed
+    models: Path = Path("/var/lib/arestoteles/models")
+    search_model: str = "embeddinggemma-300m-q4"   # an id in meaning.MODELS; "off": words only
+    search_cache: Path = Path("/var/lib/arestoteles/search")
+    search_threads: int = 2   # CPU threads of the model (the server has 4 cores)
 
     @property
     def tz(self) -> ZoneInfo:
@@ -44,4 +50,8 @@ class Settings:
             push=_flag(env.get("ARESTOTELES_PUSH"), d.push),
             ruby=env.get("ARESTOTELES_RUBY", d.ruby),
             timezone=env.get("ARESTOTELES_TZ", d.timezone),
+            models=Path(env.get("ARESTOTELES_MODELS", d.models)),
+            search_model=env.get("ARESTOTELES_SEARCH_MODEL", d.search_model).strip(),
+            search_cache=Path(env.get("ARESTOTELES_SEARCH_CACHE", d.search_cache)),
+            search_threads=int(env.get("ARESTOTELES_SEARCH_THREADS", d.search_threads)),
         )

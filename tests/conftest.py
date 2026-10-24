@@ -15,7 +15,10 @@ from fastapi.testclient import TestClient
 from arestoteles.api import create_app
 from arestoteles.auth import EmpireAuth
 from arestoteles.config import Settings
+from arestoteles.search import Search
 from arestoteles.service import VaultService
+
+from fakes import FakeEmbedder
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "vault"
@@ -77,12 +80,18 @@ class World:
         return httpx.Response(200, json={"token": "renewed", "record": record})
 
     def settings(self, **overrides) -> Settings:
-        return Settings(vault=self.vault, sync_interval=3600, **overrides)
+        return Settings(vault=self.vault, sync_interval=3600, models=self.tmp / "models",
+                        search_cache=self.tmp / "search", **overrides)
 
-    def service(self, **overrides) -> VaultService:
+    def search(self, embedder: FakeEmbedder | None = None, background: bool = False) -> Search:
+        """The search with the fake meaning model; by default it embeds right away (no background thread)."""
+        self.embedder = embedder or FakeEmbedder()
+        return Search(lambda: self.embedder, self.tmp / "search", background=background)
+
+    def service(self, search: Search | None = None, **overrides) -> VaultService:
         auth = EmpireAuth("http://pocketbase.test", httpx.Client(transport=httpx.MockTransport(self.pocketbase)),
                           clock=lambda: self.clock().timestamp())
-        service = VaultService(self.settings(**overrides), auth, clock=self.clock)
+        service = VaultService(self.settings(**overrides), auth, clock=self.clock, search=search or self.search())
         service.rebuild()
         return service
 

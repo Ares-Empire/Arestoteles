@@ -13,6 +13,10 @@ dependencies = [
   "httpx>=0.27",
   "PyYAML>=6.0",
   "markdown-it-py>=3.0",
+  # search's meaning side (docs/API.md → Search): the model runs on the CPU through ONNX Runtime, no torch
+  "numpy>=2.0",
+  "onnxruntime>=1.20",
+  "tokenizers>=0.21",
 ]
 
 [project.optional-dependencies]

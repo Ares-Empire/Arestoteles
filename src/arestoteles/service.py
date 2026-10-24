@@ -20,6 +20,7 @@ from .config import Settings
 from .edits import EditError, Editor
 from .gitrepo import GitError, Repo
 from .index import Built, build
+from .search import Search
 from .texts import Text, text
 
 log = logging.getLogger("arestoteles")
@@ -49,12 +50,13 @@ class EditOutcome:
 
 class VaultService:
     def __init__(self, settings: Settings, auth: EmpireAuth, clock: Callable[[], datetime] = utc_now,
-                 repo: Repo | None = None):
+                 repo: Repo | None = None, search: Search | None = None):
         self.settings = settings
         self.root: Path = settings.vault
         self.repo = repo or Repo(self.root)
         self.auth = auth
         self.clock = clock
+        self.search = search or Search.from_settings(settings)   # follows every rebuild (docs/API.md → Search)
         self.built: Built | None = None
         self.pulled: datetime | None = None
         self.pull_failing_since: datetime | None = None
@@ -103,7 +105,9 @@ class VaultService:
             if not force and self.built is not None and self.built.commit == commit and commit:
                 return
             started = self.clock()
-            self.built = build(self.root, commit, iso(started))
+            built = build(self.root, commit, iso(started))
+            self.search.update(built)   # the words at once; the meaning in the background
+            self.built = built
             log.info("vault built at %s: %d notes, %d unresolved link targets", commit or "(no commit)",
                      len(self.built.notes), len(self.built.unresolved))
 

@@ -10,7 +10,8 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 
-# data & logs
+# data & logs (models/: the meaning model's files, fetched by `python -m arestoteles.meaning fetch`)
+models/
 data/
 logs/
 *.sqlite

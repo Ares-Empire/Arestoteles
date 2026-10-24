@@ -306,6 +306,23 @@ class Health(_Strict):
     notes: int
 
 
+class SearchResult(_Strict):
+    note: str
+    block: int
+    item: Optional[int]
+    position: Optional[str]
+    heading: Optional[str]
+    text: str
+    sentence: str
+    match: Literal["words", "meaning", "both"]
+
+
+class SearchAnswer(_Strict):
+    commit: str
+    meaning: bool
+    results: list[SearchResult]
+
+
 class Conflict(_Strict):
     error: str
     current: Optional[Note]

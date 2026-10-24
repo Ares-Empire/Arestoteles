@@ -21,6 +21,8 @@ from .texts import Text, language, text
 
 PREFIX = "/api/arestoteles"
 _BEARER = re.compile(r"Bearer\s+(\S+)", re.I)
+QUERY_LENGTH = 200           # GET /search: q is 1–200 characters after trimming
+LIMITS, DEFAULT_LIMIT = range(1, 31), 12
 
 
 class ApiError(Exception):
@@ -32,6 +34,11 @@ class ApiError(Exception):
 def bearer(header: str | None) -> str:
     match = _BEARER.fullmatch((header or "").strip())
     return match[1] if match else ""
+
+
+def _whole(value: str) -> int | None:
+    value = value.strip()
+    return int(value) if value.isascii() and value.isdigit() else None
 
 
 def _json(data: object, status: int = 200, headers: dict | None = None) -> Response:
@@ -118,6 +125,17 @@ def create_app(service: VaultService, run_loops: bool = False) -> FastAPI:
         if data is None:
             raise ApiError(404, "unknown_note")
         return _json(data)
+
+    @router.get("/search")
+    def search(q: str | None = None, limit: str | None = None, _: Access = Depends(app_user)) -> Response:
+        built()
+        query = (q or "").strip()
+        if not 1 <= len(query) <= QUERY_LENGTH:
+            raise ApiError(400, "bad_query")
+        count = DEFAULT_LIMIT if limit is None else _whole(limit)
+        if count not in LIMITS:
+            raise ApiError(400, "bad_limit")
+        return _json(service.search.query(query, count))
 
     @router.post("/edits")
     def edit(request: Request, payload: dict = Body(...), _: Access = Depends(app_user)) -> Response:

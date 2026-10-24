@@ -1,0 +1,56 @@
+{
+  "commit": "a1b2c3d",
+  "meaning": true,
+  "results": [
+    {
+      "note": "Spread of print",
+      "block": 3,
+      "item": null,
+      "position": null,
+      "heading": "Trade routes, not borders",
+      "text": "The figure of 20 million books by 1500 is an estimate; ranges in the literature go from 8 to 20 million.",
+      "sentence": "The figure of 20 million books by 1500 is an estimate; ranges in the literature go from 8 to 20 million.",
+      "match": "both"
+    },
+    {
+      "note": "Printing press",
+      "block": 3,
+      "item": null,
+      "position": null,
+      "heading": "1. How print spread",
+      "text": "Within fifty years of the [Gutenberg Bible](arestoteles://note/Gutenberg%20Bible), presses ran in more than 250 European towns (Druckorte). Print followed trade routes, not borders.",
+      "sentence": "Within fifty years of the Gutenberg Bible, presses ran in more than 250 European towns (Druckorte).",
+      "match": "meaning"
+    },
+    {
+      "note": "Gutenberg Bible",
+      "block": 0,
+      "item": null,
+      "position": null,
+      "heading": null,
+      "text": "About 180 copies, printed in Mainz with movable metal type: the first major book printed in Europe.",
+      "sentence": "About 180 copies, printed in Mainz with movable metal type: the first major book printed in Europe.",
+      "match": "meaning"
+    },
+    {
+      "note": "Printing press",
+      "block": 6,
+      "item": null,
+      "position": null,
+      "heading": "2. Print and the Reformation",
+      "text": "Luther's pamphlets were cheap, short and in German, and printers reprinted whatever sold: see [Information wants to be cheap](arestoteles://note/Information%20wants%20to%20be%20cheap) and [Did print cause the Reformation](arestoteles://note/Did%20print%20cause%20the%20Reformation).",
+      "sentence": "Luther's pamphlets were cheap, short and in German, and printers reprinted whatever sold: see Information wants to be cheap and Did print cause the Reformation.",
+      "match": "meaning"
+    },
+    {
+      "note": "Printing press",
+      "block": 7,
+      "item": null,
+      "position": null,
+      "heading": "2. Print and the Reformation",
+      "text": "**A rival view** Elizabeth Eisenstein (*The Printing Press as an Agent of Change*, 1979) gives the press the leading role; Andrew Pettegree argues that pamphlets mattered more than books.",
+      "sentence": "Elizabeth Eisenstein (The Printing Press as an Agent of Change, 1979) gives the press the leading role; Andrew Pettegree argues that pamphlets mattered more than books.",
+      "match": "meaning"
+    }
+  ]
+}
