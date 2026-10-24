@@ -379,3 +379,24 @@ def test_pushing_off_commits_locally(world):
     answer = edit(client, op="confirm_position", position="Printing press#2")
     assert answer.json()["pushed"] is False
     assert world.remote_log(1)[0].endswith("|A made-up vault")
+
+
+@pytest.mark.parametrize("language", ["en", "de"])
+@pytest.mark.parametrize("script,key", [(None, "check_missing"), ("raise 'boom'\n", "check_broken")])
+def test_skipped_check_warnings_in_both_languages(world, language, script, key):
+    from arestoteles.texts import text
+
+    check = world.vault / ".tools" / "check.rb"
+    if script is None:
+        check.unlink()
+    else:
+        check.write_text(script)
+    client = TestClient(create_app(world.service()))
+    answer = edit(client, language, op="quick_note", text="a made-up thought")
+    assert answer.json()["warnings"] == [text(key).get(language)]
+
+
+def test_unknown_callout_in_german(client):
+    version = source(client, "Printing press")["version"]
+    answer = edit(client, "de", op="adopt_callout", note="Printing press", callout=7, version=version)
+    assert (answer.status_code, answer.json()["error"]) == (404, "Unbekannter Hinweis.")
