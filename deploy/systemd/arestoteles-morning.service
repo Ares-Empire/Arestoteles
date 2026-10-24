@@ -1,9 +1,0 @@
-[Unit]
-Description=Arestoteles morning sweep (overnight news + filings ingest)
-Requires=docker.service
-After=docker.service
-
-[Service]
-Type=oneshot
-WorkingDirectory=/opt/arestoteles
-ExecStart=/usr/bin/docker compose run --rm app python -m arestoteles.runs.morning_sweep

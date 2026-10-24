@@ -1,41 +1,6 @@
 name: arestoteles
 
 services:
-  db:
-    image: postgres:16
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: arestoteles
-      POSTGRES_PASSWORD: arestoteles   # internal docker network only; never exposed
-      POSTGRES_DB: arestoteles
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U arestoteles -d arestoteles"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
-  # Oneshot runs, invoked by systemd timers:
-  #   docker compose run --rm app python -m arestoteles.runs.morning_sweep
-  app:
-    build: .
-    env_file: .env
-    depends_on:
-      db:
-        condition: service_healthy
-    profiles: ["oneshot"]   # not started by `up`; only via `run`
-
-  # Long-running Telegram bot (/status, /halt, /resume)
-  bot:
-    build: .
-    env_file: .env
-    command: ["python", "-m", "arestoteles.notify.bot"]
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-
   # Web frontend (arestoteles.de). Serves web/ — the Claude-Design portal (docs/11)
   # plus the live watchlist feed (web/live.json) — behind a single-password login
   # gate (webauth/server.py: scrypt + HMAC-signed cookie, Aresium's pattern in
@@ -53,8 +18,3 @@ services:
       - ./webauth/server.py:/srv/server.py:ro
     ports:
       - "172.18.0.1:5180:8080"
-
-  # Phase 4 adds: api (FastAPI, read-only Aresium contract, docs/09)
-
-volumes:
-  pgdata:

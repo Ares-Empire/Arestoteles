@@ -1,9 +1,0 @@
-[Unit]
-Description=Arestoteles post-close snapshot (P&L, benchmarks, digest)
-Requires=docker.service
-After=docker.service
-
-[Service]
-Type=oneshot
-WorkingDirectory=/opt/arestoteles
-ExecStart=/usr/bin/docker compose run --rm app python -m arestoteles.runs.post_close
