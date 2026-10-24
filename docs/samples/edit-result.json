@@ -100,9 +100,7 @@
         "part_of": null,
         "event": null,
         "led_to": [],
-        "links": [
-          "Reformation"
-        ],
+        "links": [],
         "backlinks": [
           "Printing press"
         ],
@@ -214,8 +212,7 @@
           "Reformation"
         ],
         "backlinks": [
-          "Printing press",
-          "Spread of print"
+          "Printing press"
         ],
         "positions": [],
         "callouts": [],
@@ -265,6 +262,42 @@
                 "depth": 0
               }
             ]
+          },
+          {
+            "kind": "heading",
+            "level": 2,
+            "text": "To learn about next",
+            "anchor": "To learn about next"
+          },
+          {
+            "kind": "list",
+            "ordered": false,
+            "items": [
+              {
+                "text": "Paper mills in the 15th century",
+                "depth": 0
+              },
+              {
+                "text": "How literacy grew after 1500",
+                "depth": 0
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "level": 2,
+            "text": "Conversations",
+            "anchor": "Conversations"
+          },
+          {
+            "kind": "list",
+            "ordered": false,
+            "items": [
+              {
+                "text": "[2026-10-20 Printing press](arestoteles://note/2026-10-20%20Printing%20press)",
+                "depth": 0
+              }
+            ]
           }
         ],
         "brief": null,
@@ -284,10 +317,9 @@
         "part_of": null,
         "event": null,
         "led_to": [],
-        "links": [
-          "Printing press"
-        ],
+        "links": [],
         "backlinks": [
+          "Positions",
           "Printing press",
           "Reformation"
         ],
@@ -422,17 +454,17 @@
         "event": null,
         "led_to": [],
         "links": [
-          "Spread of print",
+          "Did print cause the Reformation",
+          "Reformation",
           "Information wants to be cheap",
           "Gutenberg Bible",
-          "Reformation",
-          "Did print cause the Reformation"
+          "Spread of print"
         ],
         "backlinks": [
           "2026-10-20 Printing press",
           "Home",
           "Positions",
-          "Reformation"
+          "Spread of print"
         ],
         "positions": [
           "Printing press#1",
@@ -494,6 +526,22 @@
           {
             "kind": "heading",
             "level": 2,
+            "text": "How my view changed",
+            "anchor": "How my view changed"
+          },
+          {
+            "kind": "list",
+            "ordered": false,
+            "items": [
+              {
+                "text": "**2026-10-20, position 1:** I thought: Print caused the Reformation. What changed it: Earlier reformers failed without a press, but the press alone convinced nobody.",
+                "depth": 0
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "level": 2,
             "text": "Sources",
             "anchor": "Sources"
           },
@@ -520,12 +568,12 @@
           "sections": [
             {
               "title": "How print spread",
-              "summary": "Within fifty years of the [Gutenberg Bible](arestoteles://note/Gutenberg%20Bible), presses ran in more than 250 European towns (Druckorte).",
+              "summary": "Within fifty years of the [Gutenberg Bible](arestoteles://note/Gutenberg%20Bible), presses ran in more than 250 European towns (Druckorte). Print followed trade routes, not borders.",
               "note": "Spread of print"
             },
             {
               "title": "Print and the Reformation",
-              "summary": "Luther's pamphlets were cheap, short and in German, and printers reprinted whatever sold.",
+              "summary": "Luther's pamphlets were cheap, short and in German, and printers reprinted whatever sold: see [Information wants to be cheap](arestoteles://note/Information%20wants%20to%20be%20cheap) and [Did print cause the Reformation](arestoteles://note/Did%20print%20cause%20the%20Reformation).",
               "note": null
             }
           ],
@@ -546,6 +594,11 @@
             {
               "english": "printing town",
               "german": "Druckort",
+              "note": "Spread of print"
+            },
+            {
+              "english": "trading city",
+              "german": "Handelsstadt",
               "note": "Spread of print"
             }
           ],
@@ -577,13 +630,12 @@
         "led_to": [],
         "links": [
           "Martin Luther",
-          "Printing press",
           "Information wants to be cheap"
         ],
         "backlinks": [
-          "Did print cause the Reformation",
           "Gutenberg Bible",
-          "Martin Luther"
+          "Martin Luther",
+          "Printing press"
         ],
         "positions": [],
         "callouts": [],
@@ -630,8 +682,7 @@
         "event": null,
         "led_to": [],
         "links": [
-          "Printing press",
-          "Gutenberg Bible"
+          "Printing press"
         ],
         "backlinks": [
           "Glossary",

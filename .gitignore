@@ -1,10 +1,11 @@
 # secrets & local config
 .env
-config/config.toml
+vault.env
 
 # python
 __pycache__/
 *.pyc
+*.egg-info/
 .venv/
 .pytest_cache/
 .ruff_cache/

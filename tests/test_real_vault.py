@@ -1,0 +1,148 @@
+"""Patrik's real vault, read-only: runs only where it exists (his Mac). It is copied to a temporary folder first and
+nothing is written to the original. Only counts are printed and asserted, never content (also not on failure)."""
+
+from __future__ import annotations
+
+import re
+import shutil
+import time
+from pathlib import Path
+
+import pytest
+from fastapi.testclient import TestClient
+from pydantic import ValidationError
+
+from arestoteles import check
+from arestoteles.api import create_app
+from arestoteles.inline import Resolver
+from arestoteles.models import Vault
+
+from conftest import APP, World
+
+REAL = Path.home() / "Documents" / "Patrik Breeck" / "Weltbild"
+LINK = re.compile(r"!?\[\[([^\[\]\n]+?)\]\]")
+NUMBERED = re.compile(r"^\d+[.)] ")
+
+pytestmark = pytest.mark.skipif(not REAL.is_dir(), reason="the real vault is only on Patrik's Mac")
+
+
+@pytest.fixture(scope="module")
+def copy(tmp_path_factory) -> Path:
+    target = tmp_path_factory.mktemp("real") / "vault"
+    shutil.copytree(REAL, target, symlinks=True, ignore=shutil.ignore_patterns(".trash", "workspace*.json"))
+    return target
+
+
+@pytest.fixture(scope="module")
+def setup(copy, tmp_path_factory):
+    world = World(tmp_path_factory.mktemp("world"))   # only for the fake login and the clock
+    world.vault = copy
+    failed = None
+    service = None
+    try:
+        started = time.perf_counter()
+        service = world.service(pull=False, push=False)
+        build_ms = (time.perf_counter() - started) * 1000
+    except Exception as e:   # only the exception's type may be shown
+        failed, build_ms = type(e).__name__, 0.0
+    assert failed is None
+    return world, service, build_ms
+
+
+def _numbered_lines(text: str, title: str) -> int:
+    """An independent count of the numbered lines in a `## title` section."""
+    count, inside = 0, False
+    for line in text.split("\n"):
+        if line.startswith("#"):
+            inside = line.strip() == f"## {title}" or (inside and line.startswith("###"))
+            continue
+        if inside and NUMBERED.match(line):
+            count += 1
+    return count
+
+
+def test_real_vault_builds(setup, copy):
+    world, service, build_ms = setup
+    built = service.current()
+    vault = built.vault
+    notes = vault["notes"]
+
+    errors = 0
+    try:
+        Vault.model_validate(vault)
+    except ValidationError as e:
+        errors = e.error_count()
+    assert errors == 0
+
+    # every position found: the numbered lines of each "My position" (and Positions.md's "Across topics")
+    missing_positions = 0
+    for n in notes:
+        text = (copy / n["path"]).read_text(encoding="utf-8").replace("\r\n", "\n")
+        title = "Across topics" if n["type"] == "positions" else "My position"
+        missing_positions += abs(_numbered_lines(text, title) - len(n["positions"]))
+    in_groups = sum(len(g["positions"]) for g in vault["positions"])
+    on_notes = sum(len(n["positions"]) for n in notes)
+    assert missing_positions == 0
+    assert in_groups == on_notes
+
+    # every link resolved or reported
+    resolve = Resolver(built.paths)
+    resolved = reported = lost = absent = 0
+    for n in notes:
+        text = (copy / n["path"]).read_text(encoding="utf-8")
+        for m in LINK.finditer(text):
+            target = m[1].replace("\\|", "|").split("|")[0].split("#")[0].strip()
+            if not target:
+                continue
+            note_id = resolve(target)
+            if note_id is not None:
+                resolved += 1
+                absent += note_id != n["id"] and note_id not in n["links"]
+            elif target in built.unresolved:
+                reported += 1
+            else:
+                lost += 1
+    assert lost == 0
+    assert absent == 0
+
+    client = TestClient(create_app(service))
+    started = time.perf_counter()
+    answer = client.get("/api/arestoteles/vault", headers=APP)
+    request_ms = (time.perf_counter() - started) * 1000
+    assert answer.status_code == 200
+    assert request_ms < 1000
+    assert build_ms < 1000
+
+    result = check.run(copy)
+    assert result.skipped is None
+
+    print(f"\nREAL VAULT: {len(notes)} notes, {len(vault['positions'])} position groups, {on_notes} positions, "
+          f"{sum(1 for n in notes if n['brief'])} briefs, {len(vault['glossary'])} glossary terms, "
+          f"{sum(len(n['callouts']) for n in notes)} callouts, {sum(len(n['blocks']) for n in notes)} blocks")
+    print(f"REAL VAULT: links {resolved} resolved, {reported} unresolved (reported, {len(built.unresolved)} distinct "
+          f"targets), 0 lost; {len(built.duplicates)} duplicate names")
+    print(f"REAL VAULT: build {build_ms:.0f} ms, GET /vault {request_ms:.0f} ms, {len(answer.content) // 1024} KB; "
+          f"vault check {len(result.errors)} errors, {len(result.warnings)} warnings")
+
+
+def test_real_vault_edits_on_the_copy(setup, copy):
+    """A few structured edits on the temporary copy (committed there only, never pushed): no new check errors."""
+    world, service, _ = setup
+    client = TestClient(create_app(service))
+    groups = service.current().vault["positions"]
+    topic = next((g for g in groups if g["note"] != "Positions" and len(g["positions"]) >= 2), None)
+    assert topic is not None
+    first, second = topic["positions"][0]["id"], topic["positions"][1]["id"]
+    statuses = []
+    for body in ({"op": "change_position", "position": first, "text": "A made-up test view.", "why": "A test."},
+                 {"op": "add_position", "note": topic["note"], "text": "Another made-up view.", "evidence": []},
+                 {"op": "drop_position", "position": second, "why": "A test."},
+                 {"op": "quick_note", "text": "a made-up test note"}):
+        answer = client.post("/api/arestoteles/edits", json=body, headers=APP)
+        statuses.append(answer.status_code)
+        assert answer.status_code == 200
+        assert answer.json()["pushed"] is False
+    after = next(g for g in service.current().vault["positions"] if g["note"] == topic["note"])
+    assert len(after["positions"]) == len(topic["positions"])   # one added, one dropped
+    assert len(after["positions"][0]["history"]) == len(topic["positions"][0]["history"]) + 1
+    print(f"\nREAL VAULT (copy): {len(statuses)} edits applied, statuses {sorted(set(statuses))}")
