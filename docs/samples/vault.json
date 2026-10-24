@@ -1,0 +1,773 @@
+{
+  "version": 1,
+  "commit": "a1b2c3d",
+  "built": "2026-10-24T18:00:00Z",
+  "notes": [
+    {
+      "summary": null,
+      "confidence": null,
+      "created": "2026-10-01",
+      "updated": "2026-10-20",
+      "tags": [],
+      "topic": null,
+      "part_of": null,
+      "event": null,
+      "led_to": [],
+      "links": [
+        "Printing press"
+      ],
+      "backlinks": [
+        "Home"
+      ],
+      "positions": [],
+      "callouts": [],
+      "blocks": [
+        {
+          "kind": "heading",
+          "level": 2,
+          "text": "Where I landed",
+          "anchor": "Where I landed"
+        },
+        {
+          "kind": "list",
+          "ordered": false,
+          "items": [
+            {
+              "text": "The press made the [Reformation unstoppable](arestoteles://note/Printing%20press), not inevitable.",
+              "depth": 0
+            }
+          ]
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "text": "Still open",
+          "anchor": "Still open"
+        },
+        {
+          "kind": "list",
+          "ordered": false,
+          "items": [
+            {
+              "text": "How much did literacy limit the effect?",
+              "depth": 0
+            }
+          ]
+        }
+      ],
+      "brief": null,
+      "id": "2026-10-20 Printing press",
+      "path": "Sessions/2026-10-20 Printing press.md",
+      "type": "session",
+      "title": "2026-10-20 Printing press",
+      "version": "b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4"
+    },
+    {
+      "summary": null,
+      "confidence": null,
+      "created": "2026-10-01",
+      "updated": "2026-10-20",
+      "tags": [],
+      "topic": null,
+      "part_of": null,
+      "event": null,
+      "led_to": [],
+      "links": [],
+      "backlinks": [],
+      "positions": [],
+      "callouts": [],
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "text": "paper was the bottleneck not the press?? check"
+        }
+      ],
+      "brief": null,
+      "id": "2026-10-22 0915 paper was the bottleneck",
+      "path": "Inbox/2026-10-22 0915 paper was the bottleneck.md",
+      "type": "inbox",
+      "title": "2026-10-22 0915 paper was the bottleneck",
+      "version": "c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5"
+    },
+    {
+      "summary": null,
+      "confidence": "my-read",
+      "created": "2026-10-01",
+      "updated": "2026-10-20",
+      "tags": [],
+      "topic": null,
+      "part_of": null,
+      "event": null,
+      "led_to": [],
+      "links": [
+        "Reformation"
+      ],
+      "backlinks": [
+        "Printing press"
+      ],
+      "positions": [],
+      "callouts": [],
+      "blocks": [
+        {
+          "kind": "heading",
+          "level": 2,
+          "text": "The answers",
+          "anchor": "The answers"
+        },
+        {
+          "kind": "list",
+          "ordered": true,
+          "items": [
+            {
+              "text": "**Yes, it was the cause:** without cheap copies the movement stays local.",
+              "depth": 0
+            },
+            {
+              "text": "**It was the condition, not the cause:** earlier reformers had no press and failed.",
+              "depth": 0
+            }
+          ]
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "text": "Where I stand",
+          "anchor": "Where I stand"
+        },
+        {
+          "kind": "paragraph",
+          "text": "The condition, not the cause."
+        }
+      ],
+      "brief": null,
+      "id": "Did print cause the Reformation",
+      "path": "Library/Questions/Did print cause the Reformation.md",
+      "type": "question",
+      "title": "Did print cause the Reformation?",
+      "version": "a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3"
+    },
+    {
+      "summary": null,
+      "confidence": null,
+      "created": "2026-10-01",
+      "updated": "2026-10-20",
+      "tags": [],
+      "topic": null,
+      "part_of": null,
+      "event": null,
+      "led_to": [],
+      "links": [
+        "Spread of print"
+      ],
+      "backlinks": [],
+      "positions": [],
+      "callouts": [],
+      "blocks": [
+        {
+          "kind": "table",
+          "header": [
+            "English",
+            "German",
+            "Where"
+          ],
+          "rows": [
+            [
+              "printing town",
+              "Druckort",
+              "[Spread of print](arestoteles://note/Spread%20of%20print)"
+            ],
+            [
+              "trading city",
+              "Handelsstadt",
+              "[Spread of print](arestoteles://note/Spread%20of%20print)"
+            ]
+          ]
+        }
+      ],
+      "brief": null,
+      "id": "Glossary",
+      "path": "Glossary.md",
+      "type": "glossary",
+      "title": "Glossary (Begriffe)",
+      "version": "e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7"
+    },
+    {
+      "summary": null,
+      "confidence": "solid",
+      "created": "2026-10-01",
+      "updated": "2026-10-20",
+      "tags": [],
+      "topic": null,
+      "part_of": null,
+      "event": {
+        "from": 1454,
+        "to": 1455,
+        "where": [
+          "Europe"
+        ]
+      },
+      "led_to": [
+        "Reformation"
+      ],
+      "links": [
+        "Reformation"
+      ],
+      "backlinks": [
+        "Printing press",
+        "Spread of print"
+      ],
+      "positions": [],
+      "callouts": [],
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "text": "About 180 copies, printed in Mainz with movable metal type: the first major book printed in Europe."
+        }
+      ],
+      "brief": null,
+      "id": "Gutenberg Bible",
+      "path": "Library/Events/Gutenberg Bible.md",
+      "type": "event",
+      "title": "Gutenberg Bible",
+      "version": "d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0"
+    },
+    {
+      "summary": null,
+      "confidence": null,
+      "created": "2026-10-01",
+      "updated": "2026-10-20",
+      "tags": [],
+      "topic": null,
+      "part_of": null,
+      "event": null,
+      "led_to": [],
+      "links": [
+        "Printing press",
+        "2026-10-20 Printing press"
+      ],
+      "backlinks": [],
+      "positions": [],
+      "callouts": [],
+      "blocks": [
+        {
+          "kind": "heading",
+          "level": 2,
+          "text": "Topics",
+          "anchor": "Topics"
+        },
+        {
+          "kind": "list",
+          "ordered": false,
+          "items": [
+            {
+              "text": "[Printing press](arestoteles://note/Printing%20press)",
+              "depth": 0
+            }
+          ]
+        }
+      ],
+      "brief": null,
+      "id": "Home",
+      "path": "Home.md",
+      "type": "home",
+      "title": "Weltbild",
+      "version": "f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8"
+    },
+    {
+      "summary": "When copying gets cheaper, the most copied ideas win, not the best ones.",
+      "confidence": "my-read",
+      "created": "2026-10-01",
+      "updated": "2026-10-20",
+      "tags": [],
+      "topic": null,
+      "part_of": null,
+      "event": null,
+      "led_to": [],
+      "links": [
+        "Printing press"
+      ],
+      "backlinks": [
+        "Printing press",
+        "Reformation"
+      ],
+      "positions": [],
+      "callouts": [],
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "text": "Each drop in the cost of copying (print, the telegraph, the web) moved power from those who control the copies to those who get read."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "text": "My take",
+          "anchor": "My take"
+        },
+        {
+          "kind": "paragraph",
+          "text": "The printers were businessmen first: they printed Luther because Luther sold."
+        }
+      ],
+      "brief": null,
+      "id": "Information wants to be cheap",
+      "path": "Library/Mechanisms/Information wants to be cheap.md",
+      "type": "mechanism",
+      "title": "Information wants to be cheap",
+      "version": "c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3"
+    },
+    {
+      "summary": null,
+      "confidence": null,
+      "created": "2026-10-01",
+      "updated": "2026-10-20",
+      "tags": [],
+      "topic": null,
+      "part_of": null,
+      "event": null,
+      "led_to": [],
+      "links": [
+        "Reformation"
+      ],
+      "backlinks": [
+        "Reformation"
+      ],
+      "positions": [],
+      "callouts": [],
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "text": "Monk and professor in Wittenberg; the most printed author of the [Reformation](arestoteles://note/Reformation)."
+        }
+      ],
+      "brief": null,
+      "id": "Martin Luther",
+      "path": "Library/Actors/Martin Luther.md",
+      "type": "actor",
+      "title": "Martin Luther",
+      "version": "f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2"
+    },
+    {
+      "summary": null,
+      "confidence": null,
+      "created": "2026-10-01",
+      "updated": "2026-10-20",
+      "tags": [],
+      "topic": null,
+      "part_of": null,
+      "event": null,
+      "led_to": [],
+      "links": [
+        "Information wants to be cheap",
+        "Printing press"
+      ],
+      "backlinks": [],
+      "positions": [
+        "Positions#1"
+      ],
+      "callouts": [],
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "text": "What I think, in short."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "text": "Across topics",
+          "anchor": "Across topics"
+        },
+        {
+          "kind": "positions",
+          "ids": [
+            "Positions#1"
+          ]
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "text": "By topic",
+          "anchor": "By topic"
+        },
+        {
+          "kind": "heading",
+          "level": 3,
+          "text": "Printing press",
+          "anchor": "Printing press"
+        },
+        {
+          "kind": "embed",
+          "note": "Printing press",
+          "anchor": "My position"
+        }
+      ],
+      "brief": null,
+      "id": "Positions",
+      "path": "Positions.md",
+      "type": "positions",
+      "title": "My positions",
+      "version": "d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6"
+    },
+    {
+      "summary": "Movable type made copying cheap, and cheap copies changed who could argue in public. The press did not cause the Reformation alone, but it made it impossible to stop.",
+      "confidence": "my-read",
+      "created": "2026-10-01",
+      "updated": "2026-10-20",
+      "tags": [
+        "media",
+        "europe"
+      ],
+      "topic": "Printing press",
+      "part_of": null,
+      "event": null,
+      "led_to": [],
+      "links": [
+        "Spread of print",
+        "Information wants to be cheap",
+        "Gutenberg Bible",
+        "Reformation",
+        "Did print cause the Reformation"
+      ],
+      "backlinks": [
+        "2026-10-20 Printing press",
+        "Home",
+        "Positions",
+        "Reformation"
+      ],
+      "positions": [
+        "Printing press#1",
+        "Printing press#2"
+      ],
+      "callouts": [
+        {
+          "index": 0,
+          "style": "claude",
+          "title": "A rival view",
+          "text": "Elizabeth Eisenstein (*The Printing Press as an Agent of Change*, 1979) gives the press the leading role; Andrew Pettegree argues that pamphlets mattered more than books."
+        }
+      ],
+      "blocks": [
+        {
+          "kind": "heading",
+          "level": 2,
+          "text": "My position",
+          "anchor": "My position"
+        },
+        {
+          "kind": "positions",
+          "ids": [
+            "Printing press#1",
+            "Printing press#2"
+          ]
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "text": "1. How print spread",
+          "anchor": "1. How print spread"
+        },
+        {
+          "kind": "paragraph",
+          "text": "Within fifty years of the [Gutenberg Bible](arestoteles://note/Gutenberg%20Bible), presses ran in more than 250 European towns (Druckorte). Print followed trade routes, not borders."
+        },
+        {
+          "kind": "section_link",
+          "note": "Spread of print"
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "text": "2. Print and the Reformation",
+          "anchor": "2. Print and the Reformation"
+        },
+        {
+          "kind": "paragraph",
+          "text": "Luther's pamphlets were cheap, short and in German, and printers reprinted whatever sold: see [Information wants to be cheap](arestoteles://note/Information%20wants%20to%20be%20cheap) and [Did print cause the Reformation](arestoteles://note/Did%20print%20cause%20the%20Reformation)."
+        },
+        {
+          "kind": "callout",
+          "style": "claude",
+          "title": "A rival view",
+          "text": "Elizabeth Eisenstein (*The Printing Press as an Agent of Change*, 1979) gives the press the leading role; Andrew Pettegree argues that pamphlets mattered more than books.",
+          "index": 0
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "text": "Sources",
+          "anchor": "Sources"
+        },
+        {
+          "kind": "list",
+          "ordered": false,
+          "items": [
+            {
+              "text": "[Printing press, Wikipedia](https://en.wikipedia.org/wiki/Printing_press)",
+              "depth": 0
+            },
+            {
+              "text": "Andrew Pettegree, *Brand Luther*, 2015",
+              "depth": 0
+            }
+          ]
+        }
+      ],
+      "brief": {
+        "positions": [
+          "Printing press#1",
+          "Printing press#2"
+        ],
+        "sections": [
+          {
+            "title": "How print spread",
+            "summary": "Within fifty years of the [Gutenberg Bible](arestoteles://note/Gutenberg%20Bible), presses ran in more than 250 European towns (Druckorte).",
+            "note": "Spread of print"
+          },
+          {
+            "title": "Print and the Reformation",
+            "summary": "Luther's pamphlets were cheap, short and in German, and printers reprinted whatever sold.",
+            "note": null
+          }
+        ],
+        "counterpoints": [
+          {
+            "note": "Printing press",
+            "title": "A rival view",
+            "text": "Elizabeth Eisenstein (*The Printing Press as an Agent of Change*, 1979) gives the press the leading role; Andrew Pettegree argues that pamphlets mattered more than books."
+          }
+        ],
+        "shaky": [
+          {
+            "note": "Spread of print",
+            "text": "The figure of 20 million books by 1500 is an estimate; ranges in the literature go from 8 to 20 million."
+          }
+        ],
+        "terms": [
+          {
+            "english": "printing town",
+            "german": "Druckort",
+            "note": "Spread of print"
+          }
+        ],
+        "questions": [
+          "Did print cause the Reformation"
+        ]
+      },
+      "id": "Printing press",
+      "path": "Topics/Printing press/Printing press.md",
+      "type": "topic",
+      "title": "Printing press",
+      "version": "3f2a9c1e4b7d8a0f6e5c2b1a9d8e7f6c5b4a3921"
+    },
+    {
+      "summary": null,
+      "confidence": "solid",
+      "created": "2026-10-01",
+      "updated": "2026-10-20",
+      "tags": [],
+      "topic": null,
+      "part_of": null,
+      "event": {
+        "from": 1517,
+        "to": 1648,
+        "where": [
+          "Europe"
+        ]
+      },
+      "led_to": [],
+      "links": [
+        "Martin Luther",
+        "Printing press",
+        "Information wants to be cheap"
+      ],
+      "backlinks": [
+        "Did print cause the Reformation",
+        "Gutenberg Bible",
+        "Martin Luther"
+      ],
+      "positions": [],
+      "callouts": [],
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "text": "Began with [Martin Luther](arestoteles://note/Martin%20Luther)'s theses in 1517 and ended with the Peace of Westphalia (Westfälischer Frieden) in 1648."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "text": "Mechanisms at work",
+          "anchor": "Mechanisms at work"
+        },
+        {
+          "kind": "list",
+          "ordered": false,
+          "items": [
+            {
+              "text": "[Information wants to be cheap](arestoteles://note/Information%20wants%20to%20be%20cheap): pamphlets outsold books",
+              "depth": 0
+            }
+          ]
+        }
+      ],
+      "brief": null,
+      "id": "Reformation",
+      "path": "Library/Events/Reformation.md",
+      "type": "event",
+      "title": "Reformation",
+      "version": "e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1"
+    },
+    {
+      "summary": "Print spread along trade routes: from Mainz to Venice, Basel and Lyon within one generation.",
+      "confidence": "solid",
+      "created": "2026-10-01",
+      "updated": "2026-10-20",
+      "tags": [],
+      "topic": "Printing press",
+      "part_of": {
+        "note": "Printing press",
+        "section": 1
+      },
+      "event": null,
+      "led_to": [],
+      "links": [
+        "Printing press",
+        "Gutenberg Bible"
+      ],
+      "backlinks": [
+        "Glossary",
+        "Printing press"
+      ],
+      "positions": [],
+      "callouts": [
+        {
+          "index": 0,
+          "style": "shaky",
+          "title": null,
+          "text": "The figure of 20 million books by 1500 is an estimate; ranges in the literature go from 8 to 20 million."
+        }
+      ],
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "text": "*Part of [Printing press](arestoteles://note/Printing%20press), section 1.*"
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "text": "Trade routes, not borders",
+          "anchor": "Trade routes, not borders"
+        },
+        {
+          "kind": "paragraph",
+          "text": "Printers went where paper, money and readers were: the trading cities (Handelsstädte) of the Rhine and northern Italy."
+        },
+        {
+          "kind": "callout",
+          "style": "shaky",
+          "title": null,
+          "text": "The figure of 20 million books by 1500 is an estimate; ranges in the literature go from 8 to 20 million.",
+          "index": 0
+        },
+        {
+          "kind": "table",
+          "header": [
+            "City",
+            "First press"
+          ],
+          "rows": [
+            [
+              "Mainz",
+              "1450"
+            ],
+            [
+              "Venice",
+              "1469"
+            ],
+            [
+              "Lyon",
+              "1473"
+            ]
+          ]
+        }
+      ],
+      "brief": null,
+      "id": "Spread of print",
+      "path": "Topics/Printing press/Spread of print.md",
+      "type": "topic",
+      "title": "Spread of print",
+      "version": "8b1d2e3f4a5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e"
+    }
+  ],
+  "positions": [
+    {
+      "title": "Across topics",
+      "note": "Positions",
+      "positions": [
+        {
+          "id": "Positions#1",
+          "note": "Positions",
+          "number": 1,
+          "text": "Who controls the copies controls the argument.",
+          "draft": false,
+          "evidence": [
+            "Information wants to be cheap",
+            "Printing press"
+          ],
+          "history": []
+        }
+      ]
+    },
+    {
+      "title": "Printing press",
+      "note": "Printing press",
+      "positions": [
+        {
+          "id": "Printing press#1",
+          "note": "Printing press",
+          "number": 1,
+          "text": "Print did not cause the Reformation, but it made it impossible to stop.",
+          "draft": false,
+          "evidence": [
+            "Did print cause the Reformation",
+            "Reformation"
+          ],
+          "history": [
+            {
+              "date": "2026-10-20",
+              "text": "Print caused the Reformation.",
+              "why": "Earlier reformers failed without a press, but the press alone convinced nobody."
+            }
+          ]
+        },
+        {
+          "id": "Printing press#2",
+          "note": "Printing press",
+          "number": 2,
+          "text": "Printers were businessmen first; they printed what sold.",
+          "draft": true,
+          "evidence": [
+            "Information wants to be cheap"
+          ],
+          "history": []
+        }
+      ]
+    }
+  ],
+  "glossary": [
+    {
+      "english": "printing town",
+      "german": "Druckort",
+      "note": "Spread of print"
+    },
+    {
+      "english": "trading city",
+      "german": "Handelsstadt",
+      "note": "Spread of print"
+    }
+  ],
+  "home": {
+    "learn_next": [
+      "Paper mills in the 15th century",
+      "How literacy grew after 1500"
+    ]
+  }
+}
