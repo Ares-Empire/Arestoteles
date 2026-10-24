@@ -2,7 +2,8 @@
 # Arestoteles, the server of the Weltbild vault for the iPhone app, on 127.0.0.1:8099 (Caddy routes
 # /api/arestoteles/* here). One process: the API + the sync loop (pulls the vault every 60 s, pushes app edits).
 # Runs as root like Aresus: the vault clone (/var/lib/arestoteles/vault) and its deploy key belong to root.
-# Needs git, ssh and ruby (the vault's check). Settings: defaults fit this server; overrides in
+# Needs git, ssh and ruby (the vault's check), and for the search's meaning side the model's files in
+# /var/lib/arestoteles/models (python -m arestoteles.meaning fetch). Settings: defaults fit this server; overrides in
 # /root/Arestoteles/vault.env (optional, git-ignored). Install: deploy/README.md.
 [Unit]
 Description=Arestoteles (Weltbild vault API and sync)

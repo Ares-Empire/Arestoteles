@@ -127,12 +127,12 @@ class WordIndex:
         return forms
 
     def _starting(self, prefix: str) -> list[str]:
-        start = bisect.bisect_left(self._vocabulary, prefix)
+        """The vocabulary's words beginning with `prefix` (it is sorted, so they stand together)."""
         out = []
-        for form in self._vocabulary[start:]:
-            if not form.startswith(prefix):
+        for i in range(bisect.bisect_left(self._vocabulary, prefix), len(self._vocabulary)):
+            if not self._vocabulary[i].startswith(prefix):
                 break
-            out.append(form)
+            out.append(self._vocabulary[i])
         return out
 
     def search(self, query: str) -> list[Hit]:

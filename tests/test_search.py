@@ -272,6 +272,20 @@ def test_a_query_the_model_cannot_embed_answers_with_words(world, caplog):
     assert answer["meaning"] is False and answer["results"][0]["match"] == "words"
 
 
+def test_a_broken_search_never_stops_the_vault(world, caplog):
+    class Broken(Search):
+        def update(self, built):
+            raise RuntimeError("a bug in the search")
+
+    with caplog.at_level(logging.ERROR, logger="arestoteles"):
+        service = world.service(Broken(lambda: None))
+    client = TestClient(create_app(service))
+    assert client.get(BASE + "/vault", headers=APP).status_code == 200
+    answer = client.get(BASE + "/search", params={"q": "print"}, headers=APP)
+    assert (answer.status_code, answer.json()) == (503, {"error": text("not_ready").en})
+    assert "the search index could not be built" in caplog.text
+
+
 def test_vector_cache(tmp_path):
     path = tmp_path / "fake.sqlite"
     cache = VectorCache(path, "one")

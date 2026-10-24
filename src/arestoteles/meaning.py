@@ -150,7 +150,8 @@ MODELS: dict[str, ModelSpec] = {spec.id: spec for spec in (
 )}
 
 class OnnxEmbedder:
-    """A sentence-embedding model through ONNX Runtime: tokens → the graph → mean over the tokens → length 1."""
+    """A sentence-embedding model through ONNX Runtime: tokens → the graph → the mean over the tokens (or the graph's
+    own sentence embedding) → length 1. One session serves the background embedding and the queries at once."""
 
     def __init__(self, spec: ModelSpec, folder: Path, threads: int = 2):
         import onnxruntime as ort

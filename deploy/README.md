@@ -52,7 +52,8 @@ cd /root/Arestoteles
 .venv/bin/pip install -q -e .                       # numpy, onnxruntime, tokenizers (the Aresync hook does it when
                                                     # pyproject.toml changed)
 .venv/bin/python -m arestoteles.meaning fetch       # → /var/lib/arestoteles/models/embeddinggemma-300m-q4 (pinned
-                                                    # commit, size and SHA-256 checked; run again: "already there")
+                                                    # commit, size and SHA-256 checked; run again: "already there";
+                                                    # the Aresync hook runs it on every deploy)
 .venv/bin/python -m arestoteles.meaning check       # "loaded in … s, a query embedded in … ms, …, peak memory … MB"
 systemctl restart arestoteles.service               # the service looks for the model when it starts
 journalctl -u arestoteles -n 30 | grep -E "meaning|search"
@@ -120,7 +121,8 @@ cp /root/Arestoteles/deploy/aresync-hook /root/aresync/hooks/Arestoteles && chmo
 grep REPOS /root/aresync/config        # "Arestoteles" must be listed, so Aresync pulls the checkout
 ```
 
-After each pull of a new commit the hook reinstalls when `pyproject.toml` changed, restarts `arestoteles.service`,
+After each pull of a new commit the hook reinstalls when `pyproject.toml` changed, fetches the meaning model when it is
+missing (a no-op once it is there; a failed download leaves the search on words only), restarts `arestoteles.service`,
 and recreates the `web` container when `webauth/server.py` or `docker-compose.yml` changed (`web/` itself is live on
 pull). The vault is not deployed by Aresync: the service pulls it itself.
 

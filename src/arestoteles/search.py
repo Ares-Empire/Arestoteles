@@ -181,6 +181,7 @@ class Search:
         return self._idle.wait(timeout)
 
     def query(self, query: str, limit: int) -> dict:
+        """The answer of GET /search; LookupError before the first vault was indexed."""
         index = self._index
         if index is None:
             raise LookupError("no vault indexed yet")
@@ -226,7 +227,9 @@ class Search:
             unit_of = dict(zip(index.keys, index.units, strict=True))
             todo = [k for k in missing if k not in have]
             for start in range(0, len(todo), CHUNK):
-                if self._pending is not None:   # a newer vault waits: embed for that one (this work is kept)
+                if self._pending is not None:   # a newer vault waits: embed for that one, keeping this work
+                    with self._lock:
+                        self._known.update(have)
                     return
                 chunk = todo[start:start + CHUNK]
                 fresh = dict(zip(chunk, embedder.passages([unit_of[k] for k in chunk]), strict=True))

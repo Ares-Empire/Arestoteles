@@ -135,7 +135,10 @@ def create_app(service: VaultService, run_loops: bool = False) -> FastAPI:
         count = DEFAULT_LIMIT if limit is None else _whole(limit)
         if count not in LIMITS:
             raise ApiError(400, "bad_limit")
-        return _json(service.search.query(query, count))
+        try:
+            return _json(service.search.query(query, count))
+        except LookupError:
+            raise ApiError(503, "not_ready") from None
 
     @router.post("/edits")
     def edit(request: Request, payload: dict = Body(...), _: Access = Depends(app_user)) -> Response:

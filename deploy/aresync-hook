@@ -15,6 +15,10 @@ changed() {  # true when one of the paths changed in this pull (or when that is 
 if changed pyproject.toml; then
   .venv/bin/pip install --quiet --disable-pip-version-check -e .
 fi
+# The search's meaning model (deploy/README.md → Meaning search): pinned and checked, "already there" once fetched.
+# A failed download does not stop the deploy: the search then answers with words only until it is fetched.
+(set -a; [ -f vault.env ] && . ./vault.env; set +a; .venv/bin/python -m arestoteles.meaning fetch) \
+  || echo "the meaning model was not fetched: python -m arestoteles.meaning fetch" >&2
 systemctl restart arestoteles.service
 
 if changed webauth/server.py docker-compose.yml; then

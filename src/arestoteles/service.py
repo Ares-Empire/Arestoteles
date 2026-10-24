@@ -106,7 +106,10 @@ class VaultService:
                 return
             started = self.clock()
             built = build(self.root, commit, iso(started))
-            self.search.update(built)   # the words at once; the meaning in the background
+            try:
+                self.search.update(built)   # the words at once; the meaning in the background
+            except Exception:   # the search must never keep the vault from updating
+                log.exception("the search index could not be built; the search keeps the previous one")
             self.built = built
             log.info("vault built at %s: %d notes, %d unresolved link targets", commit or "(no commit)",
                      len(self.built.notes), len(self.built.unresolved))
