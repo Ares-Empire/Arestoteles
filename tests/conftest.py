@@ -66,7 +66,10 @@ class World:
         self.pb_records: dict[str, dict] = {
             "patrik-token": {"id": "userone00000001", "approved": True, "services": ["empire", "arestoteles"]},
             "other-token": {"id": "usertwo00000002", "approved": True, "services": ["empire"]},
+            # approved and given the service (an approval grants what an account asks for), but not the owner
+            "stranger-token": {"id": "userthree000003", "approved": True, "services": ["empire", "arestoteles"]},
         }
+        self.owners = {"userone00000001"}   # EMPIRE_ALLOWED_USERS
         self.pb_calls = 0
         self.pb_down = False
 
@@ -89,7 +92,8 @@ class World:
         return Search(lambda: self.embedder, self.tmp / "search", background=background)
 
     def service(self, search: Search | None = None, **overrides) -> VaultService:
-        auth = EmpireAuth("http://pocketbase.test", httpx.Client(transport=httpx.MockTransport(self.pocketbase)),
+        auth = EmpireAuth("http://pocketbase.test", self.owners,
+                          httpx.Client(transport=httpx.MockTransport(self.pocketbase)),
                           clock=lambda: self.clock().timestamp())
         service = VaultService(self.settings(**overrides), auth, clock=self.clock, search=search or self.search())
         service.rebuild()

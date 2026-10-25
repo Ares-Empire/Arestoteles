@@ -35,6 +35,7 @@ def test_request_language(client, header, expected):
     ("/vault", None, 401, "unauthenticated"),
     ("/vault", "unknown-token", 401, "unauthenticated"),
     ("/vault", "other-token", 403, "forbidden"),
+    ("/vault", "stranger-token", 403, "forbidden"),
     ("/notes/Nowhere/source", "patrik-token", 404, "unknown_note"),
     ("/missing", None, 404, "unknown_route"),
 ])
@@ -44,6 +45,30 @@ def test_errors_in_both_languages(client, path, token, status, key, language_):
     assert answer.status_code == status
     assert answer.headers["Content-Language"] == language_
     assert answer.json() == {"error": text(key).get(language_)}
+
+
+ROUTES = [("GET", "/vault", None), ("GET", "/notes/Printing press/source", None), ("GET", "/search?q=print", None),
+          ("POST", "/edits", {"op": "quick_note", "text": "Fictional note.", "kind": "discuss"})]
+
+
+@pytest.mark.parametrize("method,path,body", ROUTES)
+def test_only_the_owner_gets_in(world, method, path, body):
+    """Every route with a login: an approved account with the service is still refused unless it is an owner, and no
+    owners means nobody (EMPIRE_ALLOWED_USERS, fail closed)."""
+    client = TestClient(create_app(world.service()))
+    stranger = client.request(method, BASE + path, json=body, headers={"Authorization": "Bearer stranger-token"})
+    assert (stranger.status_code, stranger.json()) == (403, {"error": text("forbidden").en})
+    world.owners.clear()
+    nobody = TestClient(create_app(world.service()))
+    patrik = nobody.request(method, BASE + path, json=body, headers=APP)
+    assert (patrik.status_code, patrik.json()) == (403, {"error": text("forbidden").en})
+
+
+def test_the_owner_list_comes_from_the_environment():
+    from arestoteles.config import Settings
+    assert Settings.from_env({}).allowed_users == frozenset()
+    assert Settings.from_env({"EMPIRE_ALLOWED_USERS": ""}).allowed_users == frozenset()
+    assert Settings.from_env({"EMPIRE_ALLOWED_USERS": " a1, ,b2 ,"}).allowed_users == {"a1", "b2"}
 
 
 @pytest.mark.parametrize("language_,expected", [

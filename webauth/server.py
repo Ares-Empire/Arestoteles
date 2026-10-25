@@ -39,11 +39,9 @@ SESSION_SECS = 30 * 24 * 60 * 60  # 30 days
 HASH = os.environ.get("AUTH_PASSWORD_HASH", "")
 SECRET = os.environ.get("AUTH_SESSION_SECRET", "").encode()
 
-# ── Empire SSO (verifier) ────────────────────────────────────────────────────
-# Accept a short-lived, HMAC-signed token minted by the Ares Empire hub (shared SSO_SECRET)
-# and bound to this province (audience), and start a normal session from it — no re-login.
-SSO_SECRET = os.environ.get("SSO_SECRET", "").encode()
-SSO_AUD = "arestoteles"
+# No hand-off from the hub (2026-10-25): the hub links here without a token since it moved to Empire accounts
+# (2026-10-23), and its old hand-off tokens named no account, so they could not be limited to Arestoteles's owner.
+# The access key is the only way in.
 
 # scrypt params (must match gen_password.py)
 SCRYPT_N, SCRYPT_R, SCRYPT_P, SCRYPT_DKLEN, SCRYPT_MAXMEM = 16384, 8, 1, 32, 64 * 1024 * 1024
@@ -106,28 +104,6 @@ def clear_cookie() -> str:
 
 def _b64pad(s: str) -> bytes:
     return urlsafe_b64decode(s + "=" * (-len(s) % 4))
-
-
-def _sso_sign(payload: str) -> str:
-    return (
-        urlsafe_b64encode(hmac.new(SSO_SECRET, payload.encode(), hashlib.sha256).digest())
-        .decode()
-        .rstrip("=")
-    )
-
-
-def verify_sso(token: str | None) -> bool:
-    """True if `token` is a valid, unexpired empire SSO token addressed to this province."""
-    if not SSO_SECRET or not token or "." not in token:
-        return False
-    payload, _, sig = token.rpartition(".")
-    if not hmac.compare_digest(sig, _sso_sign(payload)):
-        return False
-    try:
-        data = json.loads(_b64pad(payload).decode())
-    except Exception:
-        return False
-    return data.get("aud") == SSO_AUD and isinstance(data.get("exp"), int) and time() < data["exp"]
 
 
 def has_valid_session(cookie_header: str | None) -> bool:
@@ -276,12 +252,6 @@ class Handler(SimpleHTTPRequestHandler):
             return self._send_html(login_page())
         if path == "/logout":
             return self._redirect("/login", cookie=clear_cookie())
-        if path == "/sso":
-            # empire hand-off: a valid token starts a session without a second login
-            token = (parse_qs(urlparse(self.path).query).get("token") or [""])[0]
-            if verify_sso(token):
-                return self._redirect("/", cookie=make_session_cookie())
-            return self._redirect("/login")
         if not self._authed() and not self._is_open(path):
             return self._redirect("/login")
         return super().do_GET()

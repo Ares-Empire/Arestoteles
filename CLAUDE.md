@@ -13,7 +13,8 @@ One Python process (`python -m arestoteles`, FastAPI + uvicorn on `127.0.0.1:809
   top, push what waits, rebuild the index when the commit changed. A local commit that cannot be replayed is kept on
   a branch `arestoteles-app/conflict-<time>`; nothing is ever lost.
 - **API:** `GET /vault` (the whole index, ETag = commit), `GET /notes/{id}/source`, `POST /edits`, `GET /search`,
-  `GET /health`. Login: the Empire token, service `arestoteles` (as Aresus).
+  `GET /health`. Login: the Empire token, service `arestoteles`, and the account must be the owner
+  (`EMPIRE_ALLOWED_USERS` in `vault.env`; empty = nobody), as Aresus and Aresium.
 - **Search:** each rebuild makes the passages' word index at once and embeds them in a background thread with the
   meaning model (EmbeddingGemma-300m 4-bit, ONNX Runtime on the CPU, files in `/var/lib/arestoteles/models`), kept on
   disk by text hash (`/var/lib/arestoteles/search`), so a pull re-embeds only what changed. Without the model files
@@ -77,8 +78,9 @@ ARESTOTELES_VAULT=/tmp/vault-copy ARESTOTELES_PULL=0 ARESTOTELES_PUSH=0 ARESTOTE
   `web` container (`python:3.12-alpine` running `webauth/server.py`, stdlib only), bound to `172.18.0.1:5180` for the
   host's Caddy (`/etc/caddy/Caddyfile`), which holds the vhost and TLS.
 - Login gate: `AUTH_PASSWORD_HASH` (scrypt, `:`-delimited, made with `webauth/gen_password.py`) and
-  `AUTH_SESSION_SECRET` in `.env`; the gate is active only when both are set. `SSO_SECRET` accepts the hub's hand-off
-  tokens. Open paths: `/login`, `/logout`, `/favicon.ico`, the login image and its fonts
+  `AUTH_SESSION_SECRET` in `.env`; the gate is active only when both are set. The access key is the only way in: the
+  old `/sso` hand-off from the hub is gone (2026-10-25; its tokens named no account, so they could not be limited to
+  the owner, and the hub stopped minting them on 2026-10-23). Open paths: `/login`, `/logout`, `/favicon.ico`, the login image and its fonts
   (`OPEN_PATHS`, exact paths only).
 - `web/` is mounted read-only, so a pulled change is live on reload; `webauth/server.py` needs the container
   recreated (the Aresync hook does it).

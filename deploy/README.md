@@ -25,7 +25,10 @@ ruby --version                                  # the check needs it (apt instal
 cd /root/Arestoteles && git pull --ff-only
 python3 -m venv .venv && .venv/bin/pip install -q -e .   # editable: a pulled change needs only a restart
 
-# 3. The unit
+# 3. The owner: only these Empire accounts get in (PocketBase user ids, comma-separated; empty = nobody)
+echo 'EMPIRE_ALLOWED_USERS=<Patrik'"'"'s user id>' >> /root/Arestoteles/vault.env && chmod 600 /root/Arestoteles/vault.env
+
+# 4. The unit
 cp deploy/arestoteles.service /etc/systemd/system/
 systemctl daemon-reload && systemctl enable --now arestoteles.service
 curl -s http://127.0.0.1:8099/api/arestoteles/health     # {"ok":true,"commit":"…","pulled":"…Z","pushed":true,"notes":…}
@@ -33,7 +36,9 @@ curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8099/api/arestoteles/v
 journalctl -u arestoteles -n 20                          # "vault built at …: N notes, M unresolved link targets"
 ```
 
-Settings (all optional; the defaults fit this server) go in `/root/Arestoteles/vault.env`: `ARESTOTELES_VAULT`
+Settings go in `/root/Arestoteles/vault.env`. **Required:** `EMPIRE_ALLOWED_USERS`, the PocketBase ids of the accounts
+that may use the app (Patrik's; comma-separated). Unset or empty, nobody gets in (every login answers 403) and the
+service logs "EMPIRE_ALLOWED_USERS is empty" at start. The rest is optional (the defaults fit this server): `ARESTOTELES_VAULT`
 (`/var/lib/arestoteles/vault`), `EMPIRE_AUTH_URL` (`http://127.0.0.1:8090`), `HOST`/`PORT` (`127.0.0.1`/`8099`),
 `ARESTOTELES_SYNC_INTERVAL` (60), `ARESTOTELES_PULL`/`ARESTOTELES_PUSH` (1; 0 turns fetching/pushing off),
 `ARESTOTELES_RUBY` (`ruby`), `ARESTOTELES_TZ` (`Europe/Berlin`).
@@ -174,7 +179,8 @@ docker volume rm arestoteles_pgdata
 
 Keep: the `web` container, `arestoteles-quotes.timer`/`.service`, the image `arestoteles-app:latest` (the quote
 refresher runs in it) and the network `arestoteles_default`. In `/opt/arestoteles/.env` only the website's keys are still
-used (`AUTH_PASSWORD_HASH`, `AUTH_SESSION_SECRET`, `SSO_SECRET`, `ALPACA_PAPER_KEY`, `ALPACA_PAPER_SECRET`); the trading
+used (`AUTH_PASSWORD_HASH`, `AUTH_SESSION_SECRET`, `ALPACA_PAPER_KEY`, `ALPACA_PAPER_SECRET`; `SSO_SECRET` can go since the
+website's `/sso` hand-off was removed, 2026-10-25); the trading
 ones (`DATABASE_URL`, `TELEGRAM_*`, `ANTHROPIC_API_KEY`, `ARESIUM_API_TOKEN`, `EDGAR_USER_AGENT`, `FINNHUB_API_KEY`) can
 go, as can the git-ignored `config/config.toml`, `data/` and `logs/` if present. The Telegram bot account itself
 (BotFather) is Patrik's to delete.
