@@ -205,6 +205,9 @@ def login_page(error: str = "") -> bytes:
   .err {{ margin: 0 0 14px; padding: 9px 12px; font-size: 12.5px; color: #ffd7dc; font-family: var(--mono);
     border-radius: 11px; background: rgba(255,45,75,0.14); border: 1px solid rgba(255,45,75,0.4); }}
   .foot {{ margin: 20px 0 0; font-size: 11px; color: #4b515c; font-family: var(--mono); letter-spacing: 0.02em; }}
+  .legal {{ margin: 8px 0 0; font-size: 11px; color: #4b515c; }}
+  .legal a {{ color: #6b7280; text-decoration: none; }}
+  .legal a:hover {{ color: #f6f7fb; }}
 </style>
 </head>
 <body>
@@ -218,6 +221,7 @@ def login_page(error: str = "") -> bytes:
       <button type="submit">Enter</button>
     </form>
     <p class="foot">Paper portfolio</p>
+    <p class="legal"><a href="https://www.ares-empire.de/privacy">Privacy</a> · <a href="https://www.ares-empire.de/imprint">Imprint</a></p>
   </main>
 </body>
 </html>"""
