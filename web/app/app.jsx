@@ -312,6 +312,8 @@ function App() {
         : nav.screen === "watch"
           ? <WatchDetail ticker={nav.ticker} ver={ver} />
           : <StockDetail ticker={nav.ticker} ver={ver} />}
+      {/* above the band, so the band's word stays where the intro lands it */}
+      <window.LegalLinks className="legal" />
       <div className="ares-band" aria-hidden="true"><window.Wordmark /></div>
     </div>
   );

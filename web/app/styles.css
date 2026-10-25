@@ -255,6 +255,12 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .thesis-pending-p { font-size: 13px; color: var(--ink-3); font-weight: 500; line-height: 1.55; max-width: 280px; margin-top: 4px; text-wrap: pretty; }
 .thesis-phase { display: inline-block; font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--ink-2); border: 1px solid var(--line-soft); border-radius: 6px; padding: 1px 7px; margin-left: 2px; }
 
+/* ---------- privacy policy + imprint (pages on the hub) ----------
+   One quiet line, right-aligned under the cards and above the wordmark band; the grid gives up its height. */
+.legal { flex: none; align-self: flex-end; margin-top: 6px; font-size: 11px; line-height: 14px; letter-spacing: 0.01em; color: var(--ink-3); }
+.legal a { color: var(--ink-3); text-decoration: none; transition: color .18s; }
+.legal a:hover { color: var(--ink-2); }
+
 /* ---------- wordmark band ---------- */
 .ares-band { flex: none; height: 16vh; min-height: 92px; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; margin-top: 6px; user-select: none; }
 .ares-word { display: flex; justify-content: space-between; width: 100%; padding: 0 2px; line-height: 0.74; font-weight: 700; letter-spacing: -0.02em; font-size: clamp(34px, 9.1vw, 150px); }
@@ -350,6 +356,11 @@ html[data-theme="red"] .ares-word span { background: linear-gradient(177deg, rgb
     -webkit-backdrop-filter: blur(22px); backdrop-filter: blur(22px); box-shadow: var(--shadow); overflow: hidden; }
   .mob-thesis .thesis-body { max-height: none; }
   .pos-empty.mob { padding: 50px 30px; }
+
+  /* privacy policy + imprint, centred above the band; the links' padding is their tap area */
+  .mob-legal { flex: none; text-align: center; padding: 4px 0 0; font-size: 11px; line-height: 14px; letter-spacing: 0.01em; color: var(--ink-3); }
+  .mob-legal a { display: inline-block; padding: 8px 2px; color: var(--ink-3); text-decoration: none; }
+  .mob-legal a:active { color: var(--ink-2); }
 
   .mob-band { flex: none; height: 13vh; min-height: 74px; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; padding: 0 12px calc(env(safe-area-inset-bottom) + 6px); }
   .mob-band .ares-word { font-size: clamp(28px, 8vw, 60px); }

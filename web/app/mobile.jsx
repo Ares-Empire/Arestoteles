@@ -151,6 +151,7 @@
           )}
         </main>
 
+        <window.LegalLinks className="mob-legal" />
         <div className="mob-band" aria-hidden="true"><window.Wordmark /></div>
       </div>
     );
