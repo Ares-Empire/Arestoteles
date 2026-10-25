@@ -1,0 +1,6 @@
+/* The site's fonts, served from this server (no font service): SIL Open Font License 1.1, the texts are the
+   OFL-*.txt files next to this one. */
+@font-face { font-family: "Space Grotesk"; src: url("SpaceGrotesk-Variable.ttf") format("truetype");
+  font-weight: 300 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("JetBrainsMono-Variable.ttf") format("truetype");
+  font-weight: 100 800; font-style: normal; font-display: swap; }

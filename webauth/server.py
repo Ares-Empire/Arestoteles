@@ -48,10 +48,11 @@ SSO_AUD = "arestoteles"
 # scrypt params (must match gen_password.py)
 SCRYPT_N, SCRYPT_R, SCRYPT_P, SCRYPT_DKLEN, SCRYPT_MAXMEM = 16384, 8, 1, 32, 64 * 1024 * 1024
 
-# paths reachable without a session: the login flow + the brand image it shows
-# Reachable without a session: the login flow and the one image the login page shows.
-# Exact paths only. Prefix matching ("/brand/") let "/brand/../index.html" past the login (2026-10-22).
-OPEN_PATHS = frozenset({"/login", "/logout", "/favicon.ico", "/brand/aristotle-bust-login.webp"})
+# Reachable without a session: the login flow and what the login page shows (its image, its fonts, which are served
+# from here, not a font service). Exact paths only. Prefix matching ("/brand/") let "/brand/../index.html" past the
+# login (2026-10-22).
+OPEN_PATHS = frozenset({"/login", "/logout", "/favicon.ico", "/brand/aristotle-bust-login.webp",
+                        "/fonts/fonts.css", "/fonts/SpaceGrotesk-Variable.ttf", "/fonts/JetBrainsMono-Variable.ttf"})
 
 
 def auth_enabled() -> bool:
@@ -162,9 +163,7 @@ def login_page(error: str = "") -> bytes:
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Arestoteles — Sign in</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/fonts/fonts.css" />
 <style>
   :root {{ color-scheme: dark; --mono: "JetBrains Mono", ui-monospace, monospace; --sans: "Space Grotesk", system-ui, sans-serif; }}
   * {{ box-sizing: border-box; }}
@@ -231,6 +230,7 @@ class Handler(SimpleHTTPRequestHandler):
         **SimpleHTTPRequestHandler.extensions_map,
         ".webp": "image/webp",
         ".svg": "image/svg+xml",
+        ".ttf": "font/ttf",
     }
 
     def __init__(self, *args, **kwargs):
