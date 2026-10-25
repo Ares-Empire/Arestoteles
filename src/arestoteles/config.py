@@ -8,6 +8,11 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 
+def _ids(value: str | None) -> frozenset[str]:
+    """A comma-separated list of account ids; blanks and empty entries are dropped."""
+    return frozenset(part.strip() for part in (value or "").split(",") if part.strip())
+
+
 def _flag(value: str | None, default: bool) -> bool:
     if value is None or not value.strip():
         return default
@@ -20,6 +25,9 @@ class Settings:
     port: int = 8099
     vault: Path = Path("/var/lib/arestoteles/vault")   # the server's clone of carlsenares/opinions
     auth_url: str = "http://127.0.0.1:8090"            # PocketBase (the Empire accounts)
+    # The Empire accounts that may use the app (EMPIRE_ALLOWED_USERS, PocketBase ids, comma-separated): its owner.
+    # Empty = nobody, as in Aresium.
+    allowed_users: frozenset[str] = frozenset()
     sync_interval: float = 60.0
     pull: bool = True    # off: never fetch (a local copy without its remote)
     push: bool = True    # off: commit edits but never push (a local copy)
@@ -45,6 +53,7 @@ class Settings:
             port=int(env.get("PORT", d.port)),
             vault=Path(env.get("ARESTOTELES_VAULT", d.vault)),
             auth_url=env.get("EMPIRE_AUTH_URL", d.auth_url).rstrip("/"),
+            allowed_users=_ids(env.get("EMPIRE_ALLOWED_USERS")),
             sync_interval=float(env.get("ARESTOTELES_SYNC_INTERVAL", d.sync_interval)),
             pull=_flag(env.get("ARESTOTELES_PULL"), d.pull),
             push=_flag(env.get("ARESTOTELES_PUSH"), d.push),

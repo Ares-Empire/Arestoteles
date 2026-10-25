@@ -34,7 +34,9 @@ def quiet_access_log() -> None:
 
 
 def build_service(settings: Settings) -> VaultService:
-    service = VaultService(settings, EmpireAuth(settings.auth_url))
+    if not settings.allowed_users:
+        log.warning("EMPIRE_ALLOWED_USERS is empty: no account can use the app")
+    service = VaultService(settings, EmpireAuth(settings.auth_url, settings.allowed_users))
     service.rebuild()   # answer from the clone right away; the loop pulls in the background
     return service
 

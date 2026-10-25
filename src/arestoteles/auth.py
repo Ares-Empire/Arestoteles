@@ -1,8 +1,10 @@
 """The Empire login check (ares-empire/docs/ACCOUNTS.md → How a service checks a login), as Aresus does it.
 
-PocketBase's auth-refresh must answer 200 and the account must be approved with `arestoteles` in its services.
-Answers are cached 60 s per token, keyed by the token's SHA-256 (the token itself is never kept or logged).
-Outages are never cached.
+PocketBase's auth-refresh must answer 200, the account must be approved with `arestoteles` in its services, and its
+id must be one of the owners (EMPIRE_ALLOWED_USERS, as Aresium's): Arestoteles holds Patrik's Weltbild only and is
+never opened to others, while any account can ask for the service and an approval grants it. No owners listed means
+nobody gets in. Answers are cached 60 s per token, keyed by the token's SHA-256 (the token itself is never kept or
+logged). Outages are never cached.
 """
 
 from __future__ import annotations
@@ -11,7 +13,7 @@ import hashlib
 import time
 from dataclasses import dataclass
 from threading import Lock
-from typing import Callable
+from typing import Callable, Iterable
 
 import httpx
 
@@ -35,15 +37,18 @@ FORBIDDEN = Access(403, "forbidden")
 UNAVAILABLE = Access(503, "login_unavailable")
 
 
-def has_access(record: object) -> bool:
+def has_access(record: object, owners: frozenset[str]) -> bool:
     return (isinstance(record, dict) and record.get("approved") is True
-            and isinstance(record.get("services"), list) and SERVICE in record["services"])
+            and isinstance(record.get("services"), list) and SERVICE in record["services"]
+            and isinstance(record.get("id"), str) and record["id"] in owners)
 
 
 class EmpireAuth:
-    def __init__(self, base_url: str, client: httpx.Client | None = None,
+    def __init__(self, base_url: str, owners: Iterable[str], client: httpx.Client | None = None,
                  clock: Callable[[], float] = time.monotonic):
+        """`owners`: the account ids that may use Arestoteles (EMPIRE_ALLOWED_USERS); empty = nobody."""
         self.url = base_url.rstrip("/") + "/api/collections/users/auth-refresh"
+        self.owners = frozenset(owners)
         self.client = client or httpx.Client(timeout=5.0)
         self.clock = clock
         self._cache: dict[str, tuple[Access, float]] = {}
@@ -84,4 +89,4 @@ class EmpireAuth:
             return UNAVAILABLE
         if not isinstance(record, dict) or not isinstance(record.get("id"), str) or not record["id"]:
             return UNAVAILABLE
-        return Access(200, user_id=record["id"]) if has_access(record) else FORBIDDEN
+        return Access(200, user_id=record["id"]) if has_access(record, self.owners) else FORBIDDEN

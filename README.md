@@ -21,8 +21,10 @@ Two parts:
 python3 -m venv .venv && .venv/bin/pip install -e '.[dev]'
 .venv/bin/python -m pytest -q
 .venv/bin/python -m arestoteles.meaning fetch --dir models   # optional: the meaning model, for its own test
-# against a copy of a vault, without fetching or pushing (the app routes need an Empire login):
-ARESTOTELES_VAULT=/tmp/vault-copy ARESTOTELES_PULL=0 ARESTOTELES_PUSH=0 .venv/bin/python -m arestoteles
+# against a copy of a vault, without fetching or pushing (the app routes need an Empire login of an account listed in
+# EMPIRE_ALLOWED_USERS, the owner; empty = nobody gets in):
+ARESTOTELES_VAULT=/tmp/vault-copy ARESTOTELES_PULL=0 ARESTOTELES_PUSH=0 EMPIRE_ALLOWED_USERS=<your user id> \
+  .venv/bin/python -m arestoteles
 curl -s http://127.0.0.1:8099/api/arestoteles/health
 ```
 

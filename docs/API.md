@@ -8,9 +8,11 @@ keeping the path). JSON, UTF-8. Dates `YYYY-MM-DD` (Berlin), timestamps ISO 8601
 
 **Auth:** `Authorization: Bearer <Empire token>`, checked like every Empire service
 ([ACCOUNTS.md → How a service checks a login](https://github.com/Ares-Empire/ares-empire/blob/main/docs/ACCOUNTS.md#how-a-service-checks-a-login)):
-`auth-refresh` answers 200 and `services` contains `arestoteles`; cached 60 s per token. Errors are
+`auth-refresh` answers 200, `services` contains `arestoteles`, and the account's id is in `EMPIRE_ALLOWED_USERS` (the
+owner, as in Aresium; empty = nobody, 2026-10-25: the vault is Patrik's alone, while any account can ask for the
+service and an approval grants it); cached 60 s per token. Errors are
 `{"error": "<one sentence>"}` in the request's language (`Accept-Language`, ares-empire/docs/LANGUAGES.md):
-`401` token rejected · `403` no `arestoteles` service · `503` account server unreachable · `404` unknown note or
+`401` token rejected · `403` no `arestoteles` service or not the owner · `503` account server unreachable · `404` unknown note or
 position · `409` changed elsewhere (body adds `"current"`, see Edits) · `422` an edit that cannot apply.
 Vault content (titles, text, glossary) is never translated.
 
