@@ -18,7 +18,7 @@ Phase 2) is there too.
    generic SaaS gradients, no purple/indigo startup palette, no Inter/system-font body, no
    centered-hero-with-three-feature-cards, no emoji, no rounded-pill-everything, no glassmorphism
    overload, no drop shadows on everything. Dense, data-first, terminal-grade.
-3. **Stack = Aresium's zero-build pattern**: React 18 UMD + Babel-standalone from CDN, `.jsx`
+3. **Stack = Aresium's zero-build pattern**: React 18 UMD + Babel-standalone (served from `web/vendor/` since 2026-10-25, first from a CDN), `.jsx`
    served static by the FastAPI `api` service. Reuse Aresium's `AnimatedChart` (SVG line/area with
    rAF morphing) as the chart base. No bundler.
 

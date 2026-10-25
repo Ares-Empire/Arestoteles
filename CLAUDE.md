@@ -72,12 +72,14 @@ ARESTOTELES_VAULT=/tmp/vault-copy ARESTOTELES_PULL=0 ARESTOTELES_PUSH=0 ARESTOTE
 
 ## The website (arestoteles.de)
 
-- `web/` is the Claude-Design portal (zero-build React from CDN, `docs/11-web-frontend.md`), served by the compose
+- `web/` is the Claude-Design portal (zero-build React, `docs/11-web-frontend.md`; React, Babel and Lucide in
+  `web/vendor/`, fonts in `web/fonts/`: nothing loads from another host), served by the compose
   `web` container (`python:3.12-alpine` running `webauth/server.py`, stdlib only), bound to `172.18.0.1:5180` for the
   host's Caddy (`/etc/caddy/Caddyfile`), which holds the vhost and TLS.
 - Login gate: `AUTH_PASSWORD_HASH` (scrypt, `:`-delimited, made with `webauth/gen_password.py`) and
   `AUTH_SESSION_SECRET` in `.env`; the gate is active only when both are set. `SSO_SECRET` accepts the hub's hand-off
-  tokens. Open paths: `/login`, `/logout`, `/brand/*`, `/favicon`.
+  tokens. Open paths: `/login`, `/logout`, `/favicon.ico`, the login image and its fonts
+  (`OPEN_PATHS`, exact paths only).
 - `web/` is mounted read-only, so a pulled change is live on reload; `webauth/server.py` needs the container
   recreated (the Aresync hook does it).
 - `web/live.json` (git-ignored) is the watchlist feed: `arestoteles-quotes.timer` runs `scripts/refresh_quotes.py`
