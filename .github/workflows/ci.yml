@@ -1,9 +1,9 @@
 name: ci
 
+# Runs only when started by hand (Actions tab, "Run workflow"): the repository is private, so every run
+# costs the organization's Actions minutes, and the same tests run locally for free (python -m pytest -q).
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   test:
