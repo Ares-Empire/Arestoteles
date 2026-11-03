@@ -13,7 +13,8 @@ owner, as in Aresium; empty = nobody, 2026-10-25: the vault is Patrik's alone, w
 service and an approval grants it); cached 60 s per token. Errors are
 `{"error": "<one sentence>"}` in the request's language (`Accept-Language`, ares-empire/docs/LANGUAGES.md):
 `401` token rejected · `403` no `arestoteles` service or not the owner · `503` account server unreachable · `404` unknown note or
-position · `409` changed elsewhere (body adds `"current"`, see Edits) · `422` an edit that cannot apply.
+position · `409` changed elsewhere (body adds `"current"`, see Edits) · `422` an edit that cannot apply ·
+`428` missing note version when enforcement is enabled · `503` the clone or edit check needs attention.
 Vault content (titles, text, glossary) is never translated.
 
 **The vault** is the git repo `carlsenares/opinions` (Obsidian; its rules are its own `CLAUDE.md`). The server keeps a
@@ -29,12 +30,12 @@ as `Patrik Breeck (Arestoteles app) <287037715+carlsenares@users.noreply.github.
 | `GET /notes/{id}/source` | `{id, version, markdown}`: the note's body as Markdown (without frontmatter), for the free editor. |
 | `POST /edits` `Edit` | `EditResult`. |
 | `GET /search?q=<query>&limit=<n>` | `SearchAnswer`: the passages that answer a query, best first, by their words and their meaning (see Search). |
-| `GET /health` | **no login** (for Aresus): `{"ok": bool, "commit": string, "pulled": "…Z", "pushed": bool, "notes": n}`; `ok` is false when the last pull or push failed for more than 10 minutes. |
+| `GET /health` | **no login** (for Aresus): `{"ok": bool, "commit": string, "pulled": "…Z", "pushed": bool, "notes": n}`; `ok` is false when the last pull or push failed for more than 10 minutes, or immediately for an unsafe clone or unresolved recovery branches. |
 
 `{id}` is URL-encoded (note ids contain spaces and apostrophes).
 
 CONTRACT ADDITION (server, 2026-10-24): `pulled` is `null` until the first successful pull, and `pushed` is false
-while app commits wait for GitHub. Before the first index is built (no clone yet), the routes with login answer
+while app commits wait for GitHub, the clone is blocked, or recovery branches need reconciliation (even if those branches have been uploaded). Pending commits are counted on startup too. Before the first index is built (no clone yet), the routes with login answer
 `503 {"error"}` ("still loading"); `/health` answers `ok: false`.
 
 ## Types
@@ -76,7 +77,7 @@ interface Note {
   blocks: Block[];                // the body for display (frontmatter, the title and the summary box left out)
   brief: Brief | null;            // topic overviews only
   inbox: Inbox | null;            // CONTRACT ADDITION (2026-10-24, lookup): Inbox notes only
-  version: string;                // git blob hash of the file: edits of the text name it
+  version: string;                // git blob hash: send the displayed version when editing/referencing this note
 }
 
 // CONTRACT ADDITION (2026-10-24, lookup): an Inbox note's state, from its frontmatter.
@@ -155,31 +156,31 @@ interface Brief {                 // a topic before a discussion, built from the
 
 ```ts
 type Edit =
-  | { op: "confirm_position"; position: string }                 // removes "(draft)"
-  | { op: "reword_position"; position: string; text: string }    // same view, better words: no history
-  | { op: "change_position"; position: string; text: string; why: string }
+  | { op: "confirm_position"; position: string; version?: string }                 // removes "(draft)"
+  | { op: "reword_position"; position: string; version?: string; text: string }    // same view, better words: no history
+  | { op: "change_position"; position: string; version?: string; text: string; why: string }
         // a changed view: the old sentence goes to "## How my view changed" (dated, with why), the new one replaces it
-  | { op: "drop_position"; position: string; why: string }       // no longer held: into the history, removed from the list
-  | { op: "add_position"; note: string; text: string; evidence: string[] }
+  | { op: "drop_position"; position: string; version?: string; why: string }       // no longer held: into the history, removed from the list
+  | { op: "add_position"; note: string; version?: string; text: string; evidence: string[] }
         // a topic overview's "## My position" (created after the summary box if missing), or "Positions" (across topics)
-  | { op: "set_confidence"; note: string; confidence: "solid" | "my-read" | "shaky" }
+  | { op: "set_confidence"; note: string; version?: string; confidence: "solid" | "my-read" | "shaky" }
   | { op: "adopt_callout"; note: string; callout: number; version: string }
         // Patrik agrees: the callout's text becomes a normal paragraph in its place (vault voice rule 2)
   | { op: "dismiss_callout"; note: string; callout: number; version: string }
   | { op: "edit_note"; note: string; version: string; markdown: string }   // the free editor: the whole body
-  | { op: "quick_note"; text: string; about?: string | null; kind?: "note" | "discuss" }
+  | { op: "quick_note"; text: string; about?: string | null; version?: string; kind?: "note" | "discuss" }
         // a new Inbox note, status new, verbatim
         // CONTRACT ADDITION (2026-10-24, lookup): `about` (optional) is a note id or a position id "<note>#<n>";
         // `kind` (optional, default "note"): "discuss" is a "discuss later" mark, whose `text` may be empty when it
         // has an `about`
-  | { op: "set_inbox_status"; note: string; status: "new" | "processed" };
+  | { op: "set_inbox_status"; note: string; version?: string; status: "new" | "processed" };
         // CONTRACT ADDITION (2026-10-24, lookup): sets an Inbox note's `status` (the app ticks off a discussed mark)
 
 interface EditResult {
   vault: Vault;                   // rebuilt after the edit
   changed: string[];              // note ids the edit touched (a quick note: the new Inbox note)
   pushed: boolean;                // false: committed, push waits for GitHub (the sync loop retries)
-  warnings: string[];             // the vault check's warnings after the edit (errors undo the edit: 422)
+  warnings: string[];             // new check warnings and notices about unresolved recovery branches
 }
 ```
 
@@ -209,19 +210,47 @@ Rules every edit follows (they are the vault's own, `CLAUDE.md` there):
   as it does the history entries: a note about the dropped position loses its `position` (it stays about the note),
   notes about later positions move up by one (each gets `updated`); `changed` then lists them after the note. The
   Inbox note's text is never touched.
-- **Versions:** an edit naming `version` fails with `409 {"error", "current": Note}` when the file changed since. Position
-  edits find their position by id; when it no longer exists the answer is `409` too.
+- **Versions (staged rollout):** `ARESTOTELES_REQUIRE_VERSIONS` defaults to **0**. Position, confidence and Inbox
+  status edits, and `quick_note` with `about`, accept a missing `version` in this compatibility mode. The server logs
+  the first allowed unversioned request of each edit kind per service process (operation name only, no note content
+  or credentials). These unversioned requests retain the old client's stale-edit risk until enforcement is enabled.
+  Set **`ARESTOTELES_REQUIRE_VERSIONS=1`** to reject missing versions on these edits with `428`.
+  A supplied version is **always checked in either mode**: stale versions answer `409 {"error", "current": Note}`.
+  Position operations use the containing note's version; a linked quick note uses the referenced note's version.
+  Plain quick notes need no version and produce no compatibility warning. `edit_note`, `adopt_callout` and
+  `dismiss_callout` keep their pre-existing required `version` fields in both modes.
+  Capture the version when the draft/queued note is created, not just before sending. Deploy this server with the
+  setting off first, then ship the version-sending app and let the owner install it, then enable the setting and
+  restart. The older server forbids these new request fields, so the updated app must not precede this server.
+  Failed drafts/queued notes must remain on the phone.
+  Requests accept equivalent NFC/NFD note names without renaming files. Ambiguous names answer `409`; edits of
+  symlinks or invalid UTF-8 answer `422`. Reword/change/drop of a position with continuation lines answers `422`:
+  use the full editor to preserve those lines.
 - A vault check *error* after an edit undoes it (`422`, the errors in `error`); *warnings* are returned, the edit stays.
   CONTRACT ADDITION: both count only what the edit added, compared with the check before it (a warning the vault
   already had is not returned; an old error elsewhere does not block edits). Without Ruby (or without the script) the
-  check is skipped and `warnings` says so in the request's language.
+  check is skipped and `warnings` says so in the request's language. If the baseline check ran but the check after
+  the edit fails or times out, the edit is rolled back with `503` instead of approving unchecked changes.
 - CONTRACT ADDITION: an edit that changes nothing (confirming a confirmed position, the same confidence) answers 200
   with `changed: []` and makes no commit. An unknown callout index answers `404`.
 - One commit per edit, message `App: <what> (<note>)`, e.g. `App: confirm position 2 (Colonialism)`.
-- Conflicts with a push from elsewhere: pull with rebase and push again; a real conflict undoes the edit and answers `409`.
-  CONTRACT ADDITION: when the sync loop cannot replay an app commit that was still waiting for GitHub (a real
-  conflict with an edit from elsewhere), the commit is kept on the branch `arestoteles-app/conflict-<time>` (pushed
-  when GitHub is reachable) and the clone follows GitHub; nothing is lost, nothing is merged by guesswork.
+- Push refusal or network timeout: the committed edit answers `200, pushed: false`; sync retries it. Rebase
+  operational failures keep the commit too. A detached HEAD, dirty checkout, unfinished Git operation or Git lock
+  prevents new edits with `503` and makes health unhealthy; the service never guesses a branch or deletes a lock.
+- Concurrent pushes: rebase only when remote changes leave the edit's dependencies unchanged. This includes the
+  referenced position of a discuss mark, evidence notes, and the Inbox when renumbering positions. Dependencies are
+  stored with local commits across restarts. Rebase reapplies pending patches (even if the remote once applied and
+  then reverted them), and the combined vault is checked against the remote's own error baseline before pushing.
+  A dependency/content conflict or new check error undoes the current request and answers `409`.
+- When sync cannot replay already accepted pending work, it preserves the commits on unique branches named
+  `arestoteles-app/conflict-<time>[-<counter>]` before following the remote. Uploading these branches is retried each
+  sync. Their presence makes health `ok: false, pushed: false`; subsequent edits include a warning naming them.
+  They require manual reconciliation, not merely a successful upload. Unknown pre-update local commits have no
+  dependency record and are preserved for reconciliation if the histories diverge.
+- Writes use atomic file replacement and a durable journal under `.git`. Restart rolls back an unfinished edit
+  (including its staged index changes), or keeps a completed commit for pushing. Source reads share the edit lock
+  so no client receives temporary bytes. Recovery data and branch refs are part of the clone: back up the whole
+  clone, not just the files checked out on `main`.
 
 ## Search
 

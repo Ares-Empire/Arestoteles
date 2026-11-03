@@ -130,6 +130,14 @@ def client(service: VaultService) -> TestClient:
 
 
 def edit(client: TestClient, language: str = "en", **body) -> httpx.Response:
+    # Behave like a client editing the currently displayed version. Staleness tests pass their own version;
+    # compatibility tests use a raw POST to exercise missing versions.
+    target = body.get("note") or body.get("position") or body.get("about")
+    if target and "version" not in body:
+        note_id = target.rpartition("#")[0] if "#" in target else target
+        source = client.get(f"/api/arestoteles/notes/{note_id}/source", headers=APP)
+        if source.status_code == 200:
+            body["version"] = source.json()["version"]
     return client.post("/api/arestoteles/edits", json=body, headers={**APP, "Accept-Language": language})
 
 

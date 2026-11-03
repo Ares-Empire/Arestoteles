@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from arestoteles.api import INDEX_SHAPE, create_app
 from arestoteles.texts import TEXTS, language, text
 
-from conftest import APP
+from conftest import APP, edit
 
 BASE = "/api/arestoteles"
 
@@ -110,7 +110,7 @@ def test_bad_request_in_both_languages(client):
     ({"op": "dismiss_callout", "note": "Printing press", "callout": 0, "version": "x"}, "note_changed"),
 ])
 def test_edit_errors_in_german(client, body, key):
-    answer = client.post(BASE + "/edits", json=body, headers={**APP, "Accept-Language": "de"})
+    answer = edit(client, "de", **body)
     values = {"note": "Nowhere"} if key == "unknown_evidence" else {}
     assert answer.json()["error"] == text(key, **values).de
     assert answer.headers["Content-Language"] == "de"
@@ -129,7 +129,7 @@ def test_etag_and_304(client, service):
         again = client.get(BASE + "/vault", headers={**APP, "If-None-Match": header})
         assert (again.status_code, again.content, again.headers["ETag"]) == (304, b"", etag)
     assert client.get(BASE + "/vault", headers={**APP, "If-None-Match": '"old"'}).status_code == 200
-    edited = client.post(BASE + "/edits", json={"op": "confirm_position", "position": "Printing press#2"}, headers=APP)
+    edited = edit(client, op="confirm_position", position="Printing press#2")
     assert client.get(BASE + "/vault", headers={**APP, "If-None-Match": etag}).status_code == 200
     assert client.get(BASE + "/vault", headers=APP).headers["ETag"] == f'"{edited.json()["vault"]["commit"]}-{INDEX_SHAPE}"'
 

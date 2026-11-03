@@ -51,7 +51,29 @@ class Repo:
 
     def branch(self) -> str:
         done = self.git("symbolic-ref", "--short", "HEAD", check=False)
-        return done.stdout.strip() if done.returncode == 0 else "main"
+        if done.returncode != 0:
+            raise GitError("detached HEAD; refusing to guess a branch to push")
+        return done.stdout.strip()
+
+    def git_path(self, name: str) -> Path:
+        path = Path(self.git("rev-parse", "--git-path", name).stdout.strip())
+        return path if path.is_absolute() else self.root / path
+
+    def require_idle(self) -> None:
+        """Never abort someone else's operation or delete a lock that might still be held."""
+        branch = self.branch()
+        if self.git_path(f"refs/heads/{branch}.lock").exists():
+            raise GitError("clone needs attention: branch lock")
+        directory = self.git_path(".")
+        for name in ("index.lock", "HEAD.lock", "rebase-merge", "rebase-apply", "MERGE_HEAD", "CHERRY_PICK_HEAD",
+                     "REVERT_HEAD", "sequencer"):
+            if (directory / name).exists():
+                raise GitError(f"clone needs attention: {name}")
+
+    def require_clean(self) -> None:
+        self.require_idle()
+        if self.git("status", "--porcelain", "--untracked-files=all").stdout:
+            raise GitError("clone has uncommitted files; refusing to overwrite them")
 
     @property
     def upstream(self) -> str:
@@ -63,18 +85,25 @@ class Repo:
     def ahead_behind(self) -> tuple[int, int]:
         """(commits only here, commits only on the remote) against the last fetched state."""
         if not self.has_upstream():
-            return 0, 0
+            return int(self.git("rev-list", "--count", "HEAD").stdout), 0
         out = self.git("rev-list", "--left-right", "--count", f"HEAD...{self.upstream}").stdout.split()
         return int(out[0]), int(out[1])
 
     def changed_files(self, old: str, new: str) -> list[str]:
-        return [p for p in self.git("diff", "--name-only", old, new).stdout.splitlines() if p]
+        return [p for p in self.git("diff", "--no-renames", "--name-only", "-z", old, new).stdout.split("\0") if p]
 
     # ── syncing ──
     def fetch(self) -> bool:
-        done = self.git("fetch", "--quiet", self.remote, check=False)
+        return self._network("fetch", "--quiet", "--prune", self.remote)
+
+    def _network(self, *args: str) -> bool:
+        try:
+            done = self.git(*args, check=False)
+        except GitError as e:
+            log.warning("%s", e)
+            return False
         if done.returncode != 0:
-            log.warning("git fetch failed: %s", done.stderr.strip()[:300])
+            log.warning("git %s failed: %s", args[0], done.stderr.strip()[:300])
         return done.returncode == 0
 
     def fast_forward(self) -> None:
@@ -82,17 +111,42 @@ class Repo:
 
     def rebase(self) -> bool:
         """Replay the local commits on the remote ones. False (and nothing changed) on a real conflict."""
-        done = self.git("rebase", self.upstream, check=False, identity=True)
+        self.require_clean()
+        before = self.head()
+        # A durable ref survives a killed process or an abort that cannot restore the checkout.
+        self.git("update-ref", "refs/arestoteles/rebase-original", before)
+        try:
+            done = self.git("rebase", "--reapply-cherry-picks", self.upstream, check=False, identity=True)
+        except GitError:
+            self._abort_rebase(before)
+            raise
         if done.returncode == 0:
+            # The service checks the resulting vault before removing the recovery ref or pushing.
             return True
-        self.git("rebase", "--abort", check=False)
-        return False
+        conflict = bool(self.git("ls-files", "--unmerged").stdout)
+        self._abort_rebase(before)
+        if conflict:
+            return False
+        raise GitError("rebase failed without a content conflict; local commits kept")
+
+    def _abort_rebase(self, before: str) -> None:
+        if self.git_path("rebase-merge").exists() or self.git_path("rebase-apply").exists():
+            self.git("rebase", "--abort")
+        if self.head() != before:
+            raise GitError("rebase did not restore HEAD; original kept at refs/arestoteles/rebase-original")
+        self.require_clean()
+        self.git("update-ref", "-d", "refs/arestoteles/rebase-original")
+
+    def recover_rebase(self) -> None:
+        ref = "refs/arestoteles/rebase-original"
+        if self.git("rev-parse", "--verify", "--quiet", ref, check=False).returncode == 0:
+            self.require_clean()
+            self.reset_hard(ref)
+            self.git("update-ref", "-d", ref)
 
     def push(self) -> bool:
-        done = self.git("push", "--quiet", self.remote, f"HEAD:refs/heads/{self.branch()}", check=False)
-        if done.returncode != 0:
-            log.warning("git push failed: %s", done.stderr.strip()[:300])
-        return done.returncode == 0
+        self.require_idle()
+        return self._network("push", "--quiet", self.remote, f"HEAD:refs/heads/{self.branch()}")
 
     # ── writing ──
     def commit(self, paths: list[str], message: str) -> None:
@@ -103,6 +157,14 @@ class Repo:
         self.git("reset", "--hard", "--quiet", ref)
 
     def save_branch(self, name: str) -> None:
-        """Keep the current local commits under a branch (locally, and on the remote when it can be reached)."""
-        self.git("branch", "--force", name, "HEAD")
-        self.git("push", "--quiet", self.remote, f"{name}:refs/heads/{name}", check=False)
+        """Keep local commits before resetting. Publishing is retried independently by the sync loop."""
+        self.git("branch", name, "HEAD")
+
+    def conflict_branches(self) -> list[str]:
+        return self.git("for-each-ref", "--format=%(refname:short)",
+                        "refs/heads/arestoteles-app/conflict-*").stdout.splitlines()
+
+    def push_conflicts(self) -> bool:
+        names = self.conflict_branches()
+        return not names or self._network("push", "--quiet", self.remote,
+                                           *(f"refs/heads/{n}:refs/heads/{n}" for n in names))

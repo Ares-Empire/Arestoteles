@@ -41,7 +41,8 @@ that may use the app (Patrik's; comma-separated). Unset or empty, nobody gets in
 service logs "EMPIRE_ALLOWED_USERS is empty" at start. The rest is optional (the defaults fit this server): `ARESTOTELES_VAULT`
 (`/var/lib/arestoteles/vault`), `EMPIRE_AUTH_URL` (`http://127.0.0.1:8090`), `HOST`/`PORT` (`127.0.0.1`/`8099`),
 `ARESTOTELES_SYNC_INTERVAL` (60), `ARESTOTELES_PULL`/`ARESTOTELES_PUSH` (1; 0 turns fetching/pushing off),
-`ARESTOTELES_RUBY` (`ruby`), `ARESTOTELES_TZ` (`Europe/Berlin`).
+`ARESTOTELES_RUBY` (`ruby`), `ARESTOTELES_TZ` (`Europe/Berlin`),
+`ARESTOTELES_REQUIRE_VERSIONS` (0; enable after the staged rollout below).
 
 ## Meaning search (`GET /search`)
 
@@ -120,6 +121,56 @@ Then `caddy validate --config /etc/caddy/Caddyfile && systemctl reload caddy`, a
 `curl -s https://www.ares-empire.de/api/arestoteles/health`.
 
 ## Updates (Aresync)
+
+### Edit-safety rollout (225)
+
+The server must be deployed before the version-sending app: the old server forbids the added `version` fields.
+Use `ARESTOTELES_REQUIRE_VERSIONS` in `/root/Arestoteles/vault.env` for this three-step rollout:
+
+1. **Deploy this server with `ARESTOTELES_REQUIRE_VERSIONS=0`** (the default), then restart `arestoteles.service`.
+   It accepts old unversioned position/confidence/status edits and linked quick notes, and checks versions from new
+   clients whenever supplied. A stale supplied version answers 409 in either mode. The first allowed unversioned
+   request of each edit kind is logged once per service process, without note names, contents or tokens:
+   `unversioned reword_position edit allowed (ARESTOTELES_REQUIRE_VERSIONS=0)`.
+2. **Ship the version-sending app (brief 228) and let the owner install it.** Verify an edit from that installed app
+   and its remote commit. Versions must be captured when a draft opens and persisted with a queued quick note's
+   `about`, not fetched only at send time. Old queued notes without a version need the owner's confirmation before
+   attaching them to a current position. Absence of repeated compatibility warnings alone does not prove migration:
+   warnings are emitted only once per kind per process.
+3. **Set `ARESTOTELES_REQUIRE_VERSIONS=1` and restart `arestoteles.service`.** Missing versions on those edits now
+   answer 428. Verify health and another versioned edit. Failed drafts/queued notes must remain on the phone.
+
+While the setting is off, unversioned edits retain their old stale-edit risk; enable it once the owner has updated.
+Plain quick notes remain compatible without a version. Free text and callout edits keep their pre-existing required
+versions in both modes. The journal, recovery, health, locking and filename protections operate in both modes.
+
+Before restarting the service, stop it and back up the **entire** `/var/lib/arestoteles/vault`, including `.git`.
+Inspect its branch, working tree, pending commits and any existing rebase/merge/lock state. Reconcile pre-update
+pending commits first where practical: their edit dependencies are unknown, so a later divergence preserves them
+on a recovery branch instead of guessing how to replay them. Do not reset or clean a dirty clone to get deployment
+past this check. Ensure this service is the sole writer of this clone (one process/uvicorn worker).
+
+After deploying the code and restarting `arestoteles.service`, verify `/health`, a versioned fixture-style edit on
+an appropriate owner-approved note, and the resulting remote commit. This audit did not access the server or edit
+the real vault. Confirm the backup job includes local Git refs and these private files:
+
+- `.git/arestoteles-edit.json`: originals for an interrupted edit. Restart restores an uncommitted edit, or keeps
+  a completed commit and records its dependencies. Preserve the journal if recovery fails.
+- `.git/arestoteles-edits/`: dependency records for pending commits; keep these with the clone.
+- `refs/arestoteles/rebase-original`: the original commits while a rebase is unfinished/unvalidated.
+- `arestoteles-app/conflict-*`: pending edits preserved for reconciliation. Upload is retried every sync, and
+  health remains `ok: false, pushed: false` while these local branches exist. Reconcile their changes into `main`,
+  verify the result was pushed, then remove the resolved **local** recovery branches. Keep the remote branches as
+  recovery copies until they are no longer needed.
+
+An unfinished rebase/merge or Git lock blocks writes and turns health unhealthy immediately. First establish that
+no Git process is still using the clone. Back up all refs, the index and working files before resolving/aborting an
+operation or removing a confirmed stale lock. The service deliberately does not delete locks or abort pre-existing
+operations. A completed rebase interrupted before validation is restored to its saved original and retried.
+
+The computer sync is separate: the app decision record specifies the Obsidian Git plugin. Verify that Aresync and
+Obsidian Git are not both writing the same checkout, particularly `C:\Users\pab\opinions` on Windows. This change
+does not modify Aresync or its settings. Full evidence and limitations: [225 audit](../docs/225-edit-safety.md).
 
 ```bash
 cp /root/Arestoteles/deploy/aresync-hook /root/aresync/hooks/Arestoteles && chmod +x /root/aresync/hooks/Arestoteles

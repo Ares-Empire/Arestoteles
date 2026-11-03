@@ -156,7 +156,10 @@ def create_app(service: VaultService, run_loops: bool = False) -> FastAPI:
     @router.get("/notes/{note_id}/source")
     def source(note_id: str, _: Access = Depends(app_user)) -> Response:
         built()
-        data = service.source(note_id)
+        try:
+            data = service.source(note_id)
+        except NotReady:
+            raise ApiError(503, "not_ready") from None
         if data is None:
             raise ApiError(404, "unknown_note")
         return _json(data)

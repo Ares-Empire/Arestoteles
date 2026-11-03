@@ -54,7 +54,8 @@ def test_conflicting_local_commit_is_kept_on_a_branch(client, world, service):
     kept = git(world.remote, "log", "-1", "--format=%s", branches[0]).stdout.strip()
     assert kept == "App: confirm position 2 (Printing press)"
     assert position(service.current().vault, "Printing press#2")["text"].endswith("nothing more.")
-    assert service.health()["pushed"] is True
+    assert service.health()["pushed"] is False
+    assert service.health()["ok"] is False   # a recovery branch still needs reconciliation
 
 
 def test_the_loop_runs_in_the_background(world):

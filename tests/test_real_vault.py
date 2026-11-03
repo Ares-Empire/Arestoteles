@@ -19,7 +19,7 @@ from arestoteles.inline import Resolver
 from arestoteles.models import SearchAnswer, Vault
 from arestoteles.search import SearchIndex
 
-from conftest import APP, World
+from conftest import APP, World, edit
 from linecheck import check_note, problems
 
 REAL = Path.home() / "Documents" / "Patrik Breeck" / "Weltbild"
@@ -162,7 +162,7 @@ def test_real_vault_edits_on_the_copy(setup, copy):
                  {"op": "set_inbox_status", "note": None, "status": "processed"}):
         if body["op"] == "set_inbox_status":
             body["note"] = discuss
-        answer = client.post("/api/arestoteles/edits", json=body, headers=APP)
+        answer = edit(client, **body)
         statuses.append(answer.status_code)
         assert answer.status_code == 200
         assert answer.json()["pushed"] is False

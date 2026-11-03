@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from typing import Callable, Iterable
 from urllib.parse import quote
 
+from .notefile import name_key
+
 # [[target#anchor|alias]] and ![[…]]; `\|` is the escaped pipe Obsidian needs inside tables.
 WIKILINK = re.compile(r"(!?)\[\[([^\[\]\n]+?)\]\]")
 CODE_SPAN = re.compile(r"(`+)(?:.|\n)*?(?<!`)\1(?!`)")
@@ -56,7 +58,7 @@ class Resolver:
         self.ids = set(ids)
         self._folded: dict[str, str] = {}
         for note_id in sorted(self.ids):
-            self._folded.setdefault(note_id.casefold(), note_id)
+            self._folded.setdefault(name_key(note_id).casefold(), note_id)
 
     def __call__(self, target: str) -> str | None:
         name = target.strip()
@@ -68,7 +70,7 @@ class Resolver:
             return None
         if name in self.ids:
             return name
-        return self._folded.get(name.casefold())
+        return self._folded.get(name_key(name).casefold())
 
 
 def escape(value: str) -> str:

@@ -20,8 +20,10 @@ edits by the vault's own rules.
 - **Searches by meaning.** A question in German finds the English passage. A small embedding model
   (EmbeddingGemma, 4-bit) runs on the CPU through ONNX Runtime, so nothing is generated: every result is a passage as it
   stands.
-- **Stays in sync.** The vault is pulled every minute and the app's commits are replayed on top. A commit that cannot
-  be replayed is kept on a branch of its own, so nothing is lost.
+- **Stays in sync.** The vault is pulled every minute and compatible app commits are replayed on top. Pending work
+  that conflicts is kept on a recovery branch and reported unhealthy until reconciled. Edits check supplied
+  note versions; enforcement becomes mandatory after the staged client rollout. Interrupted writes recover from a
+  journal. See the [edit-safety audit](docs/225-edit-safety.md).
 
 ## Screenshots
 

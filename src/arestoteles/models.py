@@ -15,38 +15,43 @@ class _Strict(BaseModel):
 
 
 # ── edits ──
-class ConfirmPosition(_Strict):
+class _Versioned(_Strict):
+    # Accepted from new clients during rollout; the service can require them once old clients are updated.
+    version: str | None = None
+
+
+class ConfirmPosition(_Versioned):
     op: Literal["confirm_position"]
     position: str
 
 
-class RewordPosition(_Strict):
+class RewordPosition(_Versioned):
     op: Literal["reword_position"]
     position: str
     text: str
 
 
-class ChangePosition(_Strict):
+class ChangePosition(_Versioned):
     op: Literal["change_position"]
     position: str
     text: str
     why: str
 
 
-class DropPosition(_Strict):
+class DropPosition(_Versioned):
     op: Literal["drop_position"]
     position: str
     why: str
 
 
-class AddPosition(_Strict):
+class AddPosition(_Versioned):
     op: Literal["add_position"]
     note: str
     text: str
     evidence: list[str] = Field(default_factory=list)
 
 
-class SetConfidence(_Strict):
+class SetConfidence(_Versioned):
     op: Literal["set_confidence"]
     note: str
     confidence: Confidence
@@ -73,14 +78,14 @@ class EditNote(_Strict):
     markdown: str
 
 
-class QuickNote(_Strict):
+class QuickNote(_Versioned):
     op: Literal["quick_note"]
     text: str
     about: Optional[str] = None                        # a note id, or a position id "<note>#<n>"
     kind: Literal["note", "discuss"] = "note"
 
 
-class SetInboxStatus(_Strict):
+class SetInboxStatus(_Versioned):
     op: Literal["set_inbox_status"]
     note: str
     status: Literal["new", "processed"]

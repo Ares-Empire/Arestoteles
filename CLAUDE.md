@@ -11,7 +11,7 @@ One Python process (`python -m arestoteles`, FastAPI + uvicorn on `127.0.0.1:809
 
 - **Sync loop (60 s):** fetch the vault clone (`/var/lib/arestoteles/vault`), fast-forward or rebase app commits on
   top, push what waits, rebuild the index when the commit changed. A local commit that cannot be replayed is kept on
-  a branch `arestoteles-app/conflict-<time>`; nothing is ever lost.
+  a unique branch `arestoteles-app/conflict-<time>[-<counter>]`; health stays unhealthy until it is reconciled.
 - **API:** `GET /vault` (the whole index, ETag = commit), `GET /notes/{id}/source`, `POST /edits`, `GET /search`,
   `GET /health`. Login: the Empire token, service `arestoteles`, and the account must be the owner
   (`EMPIRE_ALLOWED_USERS` in `vault.env`; empty = nobody), as Aresus and Aresium.
@@ -28,6 +28,7 @@ src/arestoteles/
   positions.py  position and history line rules  reader.py    one note file → Note (markdown-it-py + Obsidian)
   index.py      the whole Vault                   edits.py     every edit op, pure (files in, files out)
   check.py      the vault's check.rb              gitrepo.py   the git commands
+  transaction.py atomic writes, crash recovery and persisted edit dependencies
   service.py    state, sync loop, edit flow       api.py       routes        auth.py  Empire login
   texts.py      English + German sentences        models.py    the contract as pydantic models
   config.py     settings from the environment     main.py      start
@@ -52,6 +53,12 @@ deploy/  (unit, Aresync hook, install)
 - Every block and list item carries `lines`, its range in the source body (the app edits one paragraph with it).
   `tests/linecheck.py` proves the ranges on the fixture and (counts only) the real vault: keep it passing.
 - Everything that touches the clone runs under the service's lock; tests use a temporary bare remote, never GitHub.
+- Supplied note versions are always checked. `ARESTOTELES_REQUIRE_VERSIONS` defaults off for rollout: old
+  unversioned structured edits and linked quick notes are accepted and logged once per kind. Deploy the server
+  first, install the version-sending app, then enable the setting and restart to reject missing versions with 428.
+  Free text/callout versions remain required. See `docs/API.md` and `docs/225-edit-safety.md`; the iPhone
+  client must capture versions when drafts are created. Recovery journals and dependency records live in `.git`;
+  never remove them or recovery refs to make a dirty checkout appear clean.
 - Language: `~/ares-empire/docs/LANGUAGES.md`. All of the server's sentences are in `texts.py` (English and German);
   vault content and the check's own lines are never translated. Every answer sets `Content-Language`.
 - No secrets in the repo: `.env` and `vault.env` are git-ignored; never log a token.

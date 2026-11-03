@@ -210,7 +210,7 @@ def test_add_position_creates_the_section_and_the_embed(client, world, service):
 ])
 def test_edits_that_cannot_apply(client, world, body, status, error):
     count = commits(world)
-    answer = client.post("/api/arestoteles/edits", json=body, headers=APP)
+    answer = edit(client, **body)
     assert answer.status_code == status
     assert answer.json()["error"] == error
     assert commits(world) == count
@@ -314,6 +314,7 @@ def test_without_ruby_the_check_is_skipped(world, language, warning):
 
 def test_without_a_check_script_the_check_is_skipped(world):
     (world.vault / ".tools" / "check.rb").unlink()
+    git(world.vault, "commit", "-qam", "Remove the check script")
     client = TestClient(create_app(world.service()))
     answer = edit(client, op="confirm_position", position="Printing press#2")
     assert answer.json()["warnings"] == ["The vault check did not run: the vault has no .tools/check.rb."]
@@ -503,6 +504,7 @@ def test_skipped_check_warnings_in_both_languages(world, language, script, key):
         check.unlink()
     else:
         check.write_text(script)
+    git(world.vault, "commit", "-qam", "Change the check script")
     client = TestClient(create_app(world.service()))
     answer = edit(client, language, op="quick_note", text="a made-up thought")
     assert answer.json()["warnings"] == [text(key).get(language)]

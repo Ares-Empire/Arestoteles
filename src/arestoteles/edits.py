@@ -38,6 +38,7 @@ class Plan:
     files: dict[str, str] = field(default_factory=dict)   # path → new text (LF)
     created: list[str] = field(default_factory=list)      # paths of new files
     changed: list[str] = field(default_factory=list)      # note ids
+    reads: set[str] = field(default_factory=set)          # files (or folder prefixes) the edit depends on
 
 
 @dataclass
@@ -71,19 +72,26 @@ class _Note:
 class Editor:
     def __init__(self, vault: Built, read: Callable[[str], bytes], today: str, now: datetime):
         self.vault, self.read, self.today, self.now = vault, read, today, now
+        self.reads: set[str] = set()
 
     # ── shared steps ──
     def note(self, note_id: str, version: str | None = None) -> _Note:
         path = self.vault.paths.get(note_id)
         if path is None:
             raise EditError(404, "unknown_note")
+        if note_id in self.vault.duplicates:
+            raise EditError(409, "ambiguous_note", current=note_id)
         try:
             raw = self.read(path)
         except FileNotFoundError:
             raise EditError(409, "note_changed", current=None) from None
         if version is not None and notefile.blob_hash(raw) != version:
             raise EditError(409, "note_changed", current=note_id)
-        text = notefile.decode(raw)
+        self.reads.add(path)
+        try:
+            text = raw.decode("utf-8").replace("\r\n", "\n")
+        except UnicodeDecodeError:
+            raise EditError(422, "invalid_encoding") from None
         m = notefile.FRONTMATTER.match(text)
         prefix = m[0] if m else ""
         return _Note(note_id, path, prefix, text[len(prefix):].split("\n"))
@@ -101,7 +109,7 @@ class Editor:
             plan.message = ""
         return plan
 
-    def position(self, position_id: str) -> tuple[_Note, list[pos.Item], int]:
+    def position(self, position_id: str, single_line: bool = False) -> tuple[_Note, list[pos.Item], int]:
         note_id, sep, number = position_id.rpartition("#")
         if not sep or not number.isdigit() or note_id not in self.vault.paths:
             raise EditError(404, "unknown_position")
@@ -114,6 +122,8 @@ class Editor:
         k = int(number)
         if not 1 <= k <= len(items):
             raise EditError(409, "position_gone", current=note_id)
+        if single_line and items[k - 1].end != items[k - 1].start + 1:
+            raise EditError(422, "position_multiline")
         return n, items, k
 
     def history(self, n: _Note, line: str) -> None:
@@ -139,14 +149,14 @@ class Editor:
 
     def reword_position(self, position: str, text: str) -> Plan:
         words = _position_words(text)
-        n, items, k = self.position(position)
+        n, items, k = self.position(position, single_line=True)
         item = items[k - 1]
         n.lines[item.start:item.end] = [pos.position_line(k, item.delimiter, words, item.evidence)]
         return self.finish(Plan(f"App: reword position {k} ({n.id})"), n)
 
     def change_position(self, position: str, text: str, why: str) -> Plan:
         words, reason = _position_words(text), _why(why)
-        n, items, k = self.position(position)
+        n, items, k = self.position(position, single_line=True)
         item = items[k - 1]
         old = item.text
         n.lines[item.start:item.end] = [pos.position_line(k, item.delimiter, words, item.evidence)]
@@ -155,7 +165,7 @@ class Editor:
 
     def drop_position(self, position: str, why: str) -> Plan:
         reason = _why(why)
-        n, items, k = self.position(position)
+        n, items, k = self.position(position, single_line=True)
         item = items[k - 1]
         del n.lines[item.start:item.end]
         across = self.vault.notes[n.id]["type"] == "positions"
@@ -172,6 +182,7 @@ class Editor:
     def _inbox_after_drop(self, note_id: str, dropped: int) -> list[_Note]:
         """Inbox notes about a position move with the list as history entries do: those about the dropped position
         lose their number (they stay about the note), those about later positions move up by one."""
+        self.reads.add("Inbox/")   # a concurrently added mark must be renumbered too
         moved = []
         for inbox_id, other in sorted(self.vault.notes.items()):
             about = other.get("inbox") or {}
@@ -198,6 +209,7 @@ class Editor:
         for target in evidence:
             if target not in self.vault.paths:
                 raise EditError(422, "unknown_evidence", note=target)
+            self.reads.add(self.vault.paths[target])
         n = self.note(note)
         links = ", ".join(f"[[{target}]]" for target in dict.fromkeys(evidence))
         span = pos.position_section(n.lines, across)
@@ -284,7 +296,8 @@ class Editor:
             words = _first_words(f"discuss {self.vault.notes[target[0]]['title']}", count=8, limit=60)
         stem = f"{self.today} {self.now:%H%M} {words}".strip()
         name, count = stem, 1
-        while name in self.vault.paths or f"Inbox/{name}.md" in self.vault.paths.values():
+        used = {notefile.name_key(i).casefold() for i in self.vault.paths}
+        while notefile.name_key(name).casefold() in used:
             count += 1
             name = f"{stem} {count}"
         path = f"Inbox/{name}.md"
@@ -327,12 +340,39 @@ OPS = ("confirm_position", "reword_position", "change_position", "drop_position"
        "adopt_callout", "dismiss_callout", "edit_note", "quick_note", "set_inbox_status")
 
 
-def apply(edit: dict, editor: Editor) -> Plan:
+def apply(edit: dict, editor: Editor, *, require_versions: bool = False) -> Plan:
     """Run one edit (already checked against models.Edit) on the editor."""
     op = edit["op"]
     if op not in OPS:
         raise ValueError(f"unknown edit {op!r}")
-    return getattr(editor, op)(**{k: v for k, v in edit.items() if k != "op"})
+    args = {k: v for k, v in edit.items() if k != "op"}
+
+    def canonical(value: str) -> str:
+        note, sep, number = value.rpartition("#")
+        name = note if sep else value
+        matches = [i for i in editor.vault.paths if notefile.name_key(i) == notefile.name_key(name)]
+        if len(matches) > 1:
+            raise EditError(409, "ambiguous_note")
+        found = matches[0] if matches else name
+        return f"{found}#{number}" if sep else found
+
+    for field in ("note", "position", "about"):
+        if args.get(field):
+            args[field] = canonical(args[field])
+    if "evidence" in args:
+        args["evidence"] = [canonical(i) for i in args["evidence"]]
+    target = args.get("note") or args.get("position") or args.get("about")
+    if target:
+        note_id = target.rpartition("#")[0] if "#" in target else target
+        if note_id in editor.vault.paths:
+            if args.get("version") is None and require_versions:
+                raise EditError(428, "version_required")
+            editor.note(note_id, args.get("version"))
+    if op not in ("edit_note", "adopt_callout", "dismiss_callout"):
+        args.pop("version", None)
+    plan = getattr(editor, op)(**args)
+    plan.reads = editor.reads
+    return plan
 
 
 # ── text rules ──

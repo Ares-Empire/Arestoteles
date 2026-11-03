@@ -283,4 +283,4 @@ def test_web_container_resource_limits():
     assert web["mem_limit"] == "128m"
     assert web["memswap_limit"] == "128m"
     assert web["pids_limit"] == 64
-    assert web["environment"]["AUTH_TRUSTED_PROXY"] == "172.18.0.1"
+    assert web["environment"]["AUTH_TRUSTED_PROXY"] == "172.19.0.1"

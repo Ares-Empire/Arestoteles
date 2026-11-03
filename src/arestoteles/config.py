@@ -31,6 +31,7 @@ class Settings:
     sync_interval: float = 60.0
     pull: bool = True    # off: never fetch (a local copy without its remote)
     push: bool = True    # off: commit edits but never push (a local copy)
+    require_versions: bool = False   # enable after the owner installs the version-sending client
     ruby: str = "ruby"
     timezone: str = "Europe/Berlin"
     # search (docs/API.md → Search): the meaning model's files, fetched by `python -m arestoteles.meaning fetch`,
@@ -57,6 +58,7 @@ class Settings:
             sync_interval=float(env.get("ARESTOTELES_SYNC_INTERVAL", d.sync_interval)),
             pull=_flag(env.get("ARESTOTELES_PULL"), d.pull),
             push=_flag(env.get("ARESTOTELES_PUSH"), d.push),
+            require_versions=_flag(env.get("ARESTOTELES_REQUIRE_VERSIONS"), d.require_versions),
             ruby=env.get("ARESTOTELES_RUBY", d.ruby),
             timezone=env.get("ARESTOTELES_TZ", d.timezone),
             models=Path(env.get("ARESTOTELES_MODELS", d.models)),

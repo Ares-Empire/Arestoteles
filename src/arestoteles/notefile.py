@@ -4,11 +4,17 @@ from __future__ import annotations
 
 import hashlib
 import re
+import unicodedata
 from datetime import date
 
 import yaml
 
 FRONTMATTER = re.compile(r"\A---\n(.*?)\n---\n", re.S)   # the vault check's own pattern
+
+
+def name_key(name: str) -> str:
+    """Compare macOS's decomposed names with names sent by clients, without renaming files."""
+    return unicodedata.normalize("NFC", name)
 
 
 def blob_hash(raw: bytes) -> str:
