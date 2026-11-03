@@ -11,7 +11,13 @@ services:
   web:
     image: python:3.12-alpine
     restart: unless-stopped
+    cpus: 0.5
+    mem_limit: 128m
+    memswap_limit: 128m
+    pids_limit: 64
     env_file: .env
+    environment:
+      AUTH_TRUSTED_PROXY: "172.18.0.1"
     command: ["python", "/srv/server.py"]
     volumes:
       - ./web:/srv/web:ro

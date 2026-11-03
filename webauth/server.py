@@ -21,13 +21,18 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import io
 import json
 import os
+import socket
 import sys
 from base64 import urlsafe_b64decode, urlsafe_b64encode
+from collections import deque
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-from time import time
+from ipaddress import ip_address
+from threading import BoundedSemaphore, Lock
+from time import monotonic, time
 from typing import ClassVar
 from urllib.parse import parse_qs, urlparse
 
@@ -38,6 +43,13 @@ SESSION_SECS = 30 * 24 * 60 * 60  # 30 days
 
 HASH = os.environ.get("AUTH_PASSWORD_HASH", "")
 SECRET = os.environ.get("AUTH_SESSION_SECRET", "").encode()
+TRUSTED_PROXY = os.environ.get("AUTH_TRUSTED_PROXY", "")
+LOGIN_WINDOW = 5 * 60
+LOGIN_PER_ADDRESS = 10
+LOGIN_TOTAL = 60
+PASSWORD_CHECKS = 2
+LOGIN_BODY_LIMIT = 4096
+REQUEST_SECONDS = 10
 
 # No hand-off from the hub (2026-10-25): the hub links here without a token since it moved to Empire accounts
 # (2026-10-23), and its old hand-off tokens named no account, so they could not be limited to Arestoteles's owner.
@@ -51,6 +63,48 @@ SCRYPT_N, SCRYPT_R, SCRYPT_P, SCRYPT_DKLEN, SCRYPT_MAXMEM = 16384, 8, 1, 32, 64 
 # login (2026-10-22).
 OPEN_PATHS = frozenset({"/login", "/logout", "/favicon.ico", "/brand/aristotle-bust-login.webp",
                         "/fonts/fonts.css", "/fonts/SpaceGrotesk-Variable.ttf", "/fonts/JetBrainsMono-Variable.ttf"})
+
+
+class LoginLimits:
+    def __init__(self, clock=monotonic):
+        self.clock = clock
+        self.attempts: deque[tuple[float, str]] = deque()
+        self.lock = Lock()
+
+    def allow(self, address: str) -> bool:
+        with self.lock:
+            now = self.clock()
+            while self.attempts and self.attempts[0][0] <= now - LOGIN_WINDOW:
+                self.attempts.popleft()
+            if len(self.attempts) >= LOGIN_TOTAL:
+                return False
+            if sum(peer == address for _, peer in self.attempts) >= LOGIN_PER_ADDRESS:
+                return False
+            self.attempts.append((now, address))
+            return True
+
+
+class DeadlineReader(io.RawIOBase):
+    def __init__(self, connection: socket.socket, deadline: float):
+        self.connection = connection
+        self.deadline = deadline
+
+    def readable(self) -> bool:
+        return True
+
+    def readinto(self, buffer) -> int:
+        remaining = self.deadline - monotonic()
+        if remaining <= 0:
+            raise TimeoutError("Request deadline reached")
+        self.connection.settimeout(remaining)
+        return self.connection.recv_into(buffer)
+
+
+class WebServer(ThreadingHTTPServer):
+    def __init__(self, address, handler, bind_and_activate=True):
+        self.login_limits = LoginLimits()
+        self.password_slots = BoundedSemaphore(PASSWORD_CHECKS)
+        super().__init__(address, handler, bind_and_activate=bind_and_activate)
 
 
 def auth_enabled() -> bool:
@@ -216,6 +270,12 @@ class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=WEB_ROOT, **kwargs)
 
+    def setup(self):
+        super().setup()
+        self.read_deadline = monotonic() + REQUEST_SECONDS
+        self.rfile.close()
+        self.rfile = io.BufferedReader(DeadlineReader(self.connection, self.read_deadline))
+
     def log_message(self, fmt, *args):  # quieter logs
         sys.stderr.write(f"{self.address_string()} - {fmt % args}\n")
 
@@ -228,11 +288,14 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Content-Length", "0")
         self.end_headers()
 
-    def _send_html(self, body: bytes, status: int = 200) -> None:
+    def _send_html(self, body: bytes, status: int = 200, retry_after: int | None = None) -> None:
         self.send_response(status)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Language", "en")
+        if retry_after is not None:
+            self.send_header("Retry-After", str(retry_after))
         self.end_headers()
         if self.command != "HEAD":
             self.wfile.write(body)
@@ -242,6 +305,54 @@ class Handler(SimpleHTTPRequestHandler):
 
     def _is_open(self, path: str) -> bool:
         return path in OPEN_PATHS
+
+    def _login_address(self) -> str:
+        peer = self.client_address[0]
+        if peer != TRUSTED_PROXY:
+            return peer
+        # Caddy appends the address it sees to X-Forwarded-For.
+        forwarded = self.headers.get("X-Forwarded-For", "").rsplit(",", 1)[-1].strip()
+        try:
+            return str(ip_address(forwarded))
+        except ValueError:
+            return peer
+
+    def _login_error(self, status: int, message: str) -> None:
+        self.close_connection = True
+        self._send_html(login_page(message), status=status)
+
+    def _login_limited(self, retry_after: int = LOGIN_WINDOW) -> None:
+        self.close_connection = True
+        self._send_html(login_page("Too many sign-in attempts. Please try again shortly."),
+                        status=HTTPStatus.TOO_MANY_REQUESTS, retry_after=retry_after)
+
+    def _login_body(self) -> str | None:
+        lengths = self.headers.get_all("Content-Length", [])
+        if self.headers.get("Transfer-Encoding") or len(lengths) > 1:
+            self._login_error(HTTPStatus.BAD_REQUEST, "Invalid sign-in request.")
+            return None
+        if not lengths:
+            self._login_error(HTTPStatus.LENGTH_REQUIRED, "The sign-in request needs a length.")
+            return None
+        length = lengths[0].strip()
+        if not length.isascii() or not length.isdigit() or len(length) > 10:
+            self._login_error(HTTPStatus.BAD_REQUEST, "Invalid sign-in request.")
+            return None
+        size = int(length)
+        if size > LOGIN_BODY_LIMIT:
+            self._login_error(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "The sign-in request is too large.")
+            return None
+        try:
+            body = self.rfile.read(size)
+            if monotonic() >= self.read_deadline:
+                raise TimeoutError("Request deadline reached")
+        except TimeoutError:
+            self._login_error(HTTPStatus.REQUEST_TIMEOUT, "Sign-in took too long. Please try again.")
+            return None
+        if len(body) != size:
+            self._login_error(HTTPStatus.BAD_REQUEST, "Incomplete sign-in request.")
+            return None
+        return body.decode("utf-8", "replace")
 
     # --- routes ---
     def do_GET(self):
@@ -267,10 +378,19 @@ class Handler(SimpleHTTPRequestHandler):
         if path != "/login":
             self.send_error(HTTPStatus.NOT_FOUND)
             return
-        length = int(self.headers.get("Content-Length", "0") or "0")
-        body = self.rfile.read(length).decode("utf-8", "replace") if length else ""
+        if not self.server.login_limits.allow(self._login_address()):
+            return self._login_limited()
+        body = self._login_body()
+        if body is None:
+            return
         password = (parse_qs(body).get("password") or [""])[0]
-        if auth_enabled() and verify_password(password):
+        if not self.server.password_slots.acquire(blocking=False):
+            return self._login_limited(retry_after=1)
+        try:
+            verified = auth_enabled() and verify_password(password)
+        finally:
+            self.server.password_slots.release()
+        if verified:
             return self._redirect("/", cookie=make_session_cookie())
         return self._send_html(login_page("Incorrect access key."), status=HTTPStatus.UNAUTHORIZED)
 
@@ -282,7 +402,7 @@ def main() -> None:
         )
     else:
         sys.stderr.write("Arestoteles web: login gate ACTIVE\n")
-    httpd = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
+    httpd = WebServer(("0.0.0.0", PORT), Handler)
     sys.stderr.write(f"Arestoteles web serving {WEB_ROOT} on :{PORT}\n")
     httpd.serve_forever()
 

@@ -8,8 +8,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, Body, Depends, FastAPI, Header, Request, Response
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.routing import APIRoute
 from pydantic import ValidationError
+from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import __version__
@@ -23,6 +24,7 @@ PREFIX = "/api/arestoteles"
 _BEARER = re.compile(r"Bearer\s+(\S+)", re.I)
 QUERY_LENGTH = 200           # GET /search: q is 1–200 characters after trimming
 LIMITS, DEFAULT_LIMIT = range(1, 31), 12
+BODY_LIMIT = 128 * 1024      # JSON for a whole Markdown note, including escaping and room to grow
 
 
 class ApiError(Exception):
@@ -44,6 +46,19 @@ def _whole(value: str) -> int | None:
 def _json(data: object, status: int = 200, headers: dict | None = None) -> Response:
     body = json.dumps(data, ensure_ascii=False, separators=(",", ":")).encode()
     return Response(body, status_code=status, media_type="application/json", headers=headers)
+
+
+async def limited_body(request: Request) -> bytes:
+    length = request.headers.get("content-length", "").strip().lstrip("0")
+    if length.isascii() and length.isdigit():
+        if len(length) > len(str(BODY_LIMIT)) or int(length) > BODY_LIMIT:
+            raise ApiError(413, "body_too_large")
+    body = bytearray()
+    async for chunk in request.stream():
+        if len(body) + len(chunk) > BODY_LIMIT:
+            raise ApiError(413, "body_too_large")
+        body.extend(chunk)
+    return bytes(body)
 
 
 # Bumped whenever the index's shape changes (a new field), so phones holding the same vault commit fetch it again.
@@ -92,11 +107,31 @@ def create_app(service: VaultService, run_loops: bool = False) -> FastAPI:
     async def bad_request(request: Request, exc: RequestValidationError) -> Response:
         return _json({"error": text("bad_request").get(request.state.language)}, 400)
 
-    def app_user(authorization: str | None = Header(default=None)) -> Access:
-        access = service.auth.check(bearer(authorization))
+    def app_user(request: Request) -> Access:
+        access = getattr(request.state, "access", None)
+        if access is None:
+            access = service.auth.check(bearer(request.headers.get("authorization")))
         if not access.allowed:
             raise ApiError(access.status, access.error)
+        request.state.access = access
         return access
+
+    class BodyRoute(APIRoute):
+        def get_route_handler(self):
+            handler = super().get_route_handler()
+            if self.body_field is None:
+                return handler
+
+            async def with_body(request: Request) -> Response:
+                await run_in_threadpool(app_user, request)
+                body = await limited_body(request)
+
+                async def receive():
+                    return {"type": "http.request", "body": body, "more_body": False}
+
+                return await handler(Request(request.scope, receive))
+
+            return with_body
 
     def built():
         try:
@@ -104,7 +139,7 @@ def create_app(service: VaultService, run_loops: bool = False) -> FastAPI:
         except NotReady:
             raise ApiError(503, "not_ready") from None
 
-    router = APIRouter(prefix=PREFIX)
+    router = APIRouter(prefix=PREFIX, route_class=BodyRoute)
 
     @router.get("/health")
     def health() -> Response:

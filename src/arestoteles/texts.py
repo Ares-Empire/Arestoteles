@@ -30,6 +30,7 @@ TEXTS: dict[str, tuple[str, str]] = {
     # routes
     "unknown_route": ("Unknown route.", "Unbekannte Route."),
     "bad_request": ("Bad request.", "Ungültige Anfrage."),
+    "body_too_large": ("The request is too large.", "Die Anfrage ist zu groß."),
     "not_ready": ("The Weltbild is still loading, try again in a minute.",
                   "Das Weltbild wird noch geladen, versuch es in einer Minute noch einmal."),
     "unknown_note": ("Unknown note.", "Unbekannte Notiz."),
