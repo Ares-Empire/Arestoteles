@@ -17,7 +17,7 @@ services:
     pids_limit: 64
     env_file: .env
     environment:
-      AUTH_TRUSTED_PROXY: "172.18.0.1"
+      AUTH_TRUSTED_PROXY: "172.19.0.1"  # the compose network's gateway: how Caddy reaches the container (checked 2026-11-03)
     command: ["python", "/srv/server.py"]
     volumes:
       - ./web:/srv/web:ro
