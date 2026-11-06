@@ -169,7 +169,7 @@ operation or removing a confirmed stale lock. The service deliberately does not 
 operations. A completed rebase interrupted before validation is restored to its saved original and retried.
 
 The computer sync is separate: the app decision record specifies the Obsidian Git plugin. Verify that Aresync and
-Obsidian Git are not both writing the same checkout, particularly `C:\Users\pab\opinions` on Windows. This change
+Obsidian Git are not both writing the same checkout, particularly the vault checkout in the Windows user folder (`%USERPROFILE%\opinions`). This change
 does not modify Aresync or its settings. Full evidence and limitations: [225 audit](../docs/225-edit-safety.md).
 
 ```bash
