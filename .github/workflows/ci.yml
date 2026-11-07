@@ -1,19 +1,39 @@
 name: ci
 
-# Runs only when started by hand (Actions tab, "Run workflow"): the repository is private, so every run
-# costs the organization's Actions minutes, and the same tests run locally for free (python -m pytest -q).
 on:
+  push:
+  pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      # Test-created repositories must not inherit a developer's templates or hooks.
+      GIT_CONFIG_GLOBAL: /dev/null
+      GIT_CONFIG_NOSYSTEM: '1'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          python-version: "3.13"   # the server's Python
-      - run: ruby --version         # the made-up test vault's check runs with it
-      - run: python -m pip install -q -e '.[dev]'
-      # No network in the tests: a temporary git remote, a fake PocketBase, a stub market-data client.
-      - run: python -m pytest -q
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13' # the server's Python (3.13.5 on 2026-11-07)
+      # This repository is public: run the made-up vault tests without secrets or a real vault.
+      - run: ruby --version
+      - run: python -m pip install -e '.[dev]'
+      # Only the model-file skips are allowed; the real vault is explicitly outside CI.
+      - name: Test and check skips
+        run: |
+          set -euo pipefail
+          report=$(mktemp)
+          python -m pytest -q --ignore=tests/test_real_vault.py -rs --junitxml="$report"
+          python scripts/check-ci-skips.py "$report"
