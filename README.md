@@ -67,3 +67,24 @@ words only. Deploying: [deploy/README.md](deploy/README.md). The layout and the 
 | `docs/API.md` | The contract, with samples in `docs/samples/`. |
 | `tests/fixtures/vault/` | A small made-up vault; it builds exactly `docs/samples/vault.json`. |
 | `scripts/search_eval.py` | Compares meaning models for the search. |
+
+## Tests and CI
+
+GitHub Actions runs the made-up vault suite on every push, pull request and manual start, using the server's
+Python 3.13 (3.13.5 on 2026-11-07), git and Ruby:
+
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -e '.[dev]'
+ruby --version
+report=$(mktemp)
+GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 \
+  .venv/bin/python -m pytest -q --ignore=tests/test_real_vault.py -rs --junitxml="$report"
+.venv/bin/python scripts/check-ci-skips.py "$report"
+rm "$report"
+```
+
+The skip check permits only the documented absent model files in `tests/test_search_model.py`; any other skip
+fails CI. Model files are not downloaded in CI. `tests/test_real_vault.py` stays local and is explicitly excluded
+from CI; the ordinary `.venv/bin/python -m pytest -q` includes it where the real vault is available. No real vault,
+credentials or external services are needed for the CI suite.
