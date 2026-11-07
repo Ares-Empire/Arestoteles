@@ -115,19 +115,27 @@ def test_address_limit_precedes_password_and_body(web, monkeypatch):
     assert request(web, peer="192.0.2.2")[0] == 401
 
 
-def test_global_limit_across_addresses_and_recovery(web, monkeypatch):
-    clock = Clock()
-    web.login_limits = server.LoginLimits(clock)
-    calls = []
-    monkeypatch.setattr(server, "verify_password", lambda password: calls.append(password) or password == "correct")
-    for index in range(server.LOGIN_TOTAL):
-        assert request(web, peer=f"192.0.2.{index + 1}")[0] == 401
-    status, _, _, connection = request(web, password="correct", peer="198.51.100.1")
-    assert status == 429
-    assert len(calls) == server.LOGIN_TOTAL
-    assert connection.reads == 1
-    clock.now = server.LOGIN_WINDOW
+def test_failures_from_many_addresses_never_keep_the_owner_out(web, monkeypatch):
+    # No budget shared by all addresses (owner, 2026-11-07): others using theirs up never block a new address.
+    monkeypatch.setattr(server, "verify_password", lambda password: password == "correct")
+    for index in range(100):
+        for _ in range(server.LOGIN_PER_ADDRESS):
+            assert request(web, peer=f"192.0.2.{index + 1}")[0] == 401
+        assert request(web, peer=f"192.0.2.{index + 1}")[0] == 429
     assert request(web, password="correct", peer="198.51.100.1")[0] == 302
+
+
+def test_forgetting_old_addresses_keeps_a_blocked_address_blocked():
+    clock = Clock()
+    limits = server.LoginLimits(clock)
+    for _ in range(server.LOGIN_PER_ADDRESS):
+        assert limits.allow("192.0.2.1")
+    clock.now = server.LOGIN_WINDOW - 1
+    assert limits.allow("192.0.2.2")
+    assert not limits.allow("192.0.2.1")
+    clock.now = server.LOGIN_WINDOW + 1
+    assert limits.allow("192.0.2.3")
+    assert list(limits.attempts) == ["192.0.2.2", "192.0.2.3"]
 
 
 def test_per_address_limit_expires(web, monkeypatch):
@@ -148,12 +156,13 @@ def test_rate_reservations_are_atomic_and_bounded():
     with ThreadPoolExecutor(max_workers=16) as pool:
         allowed = list(pool.map(lambda _: limits.allow("192.0.2.1"), range(100)))
     assert sum(allowed) == server.LOGIN_PER_ADDRESS
-    for index in range(1000):
-        limits.allow(str(index))
-    assert len(limits.attempts) == server.LOGIN_TOTAL
+    for index in range(server.LOGIN_ADDRESSES + 50):
+        assert limits.allow(str(index))
+    assert len(limits.attempts) == server.LOGIN_ADDRESSES
+    assert "192.0.2.1" not in limits.attempts
     clock.now = server.LOGIN_WINDOW
     assert limits.allow("owner")
-    assert len(limits.attempts) == 1
+    assert list(limits.attempts) == ["owner"]
 
 
 def test_only_two_password_checks_can_run_and_slots_recover(web, monkeypatch):
@@ -210,7 +219,7 @@ def test_password_slot_is_released_on_error(web, monkeypatch):
 def test_forwarded_address_is_trusted_only_from_the_proxy(web, monkeypatch, peer, forwarded, expected):
     monkeypatch.setattr(server, "verify_password", lambda password: False)
     request(web, peer=peer, headers=[("X-Forwarded-For", forwarded)])
-    assert web.login_limits.attempts[-1][1] == expected
+    assert next(reversed(web.login_limits.attempts)) == expected
 
 
 def test_proxy_clients_have_separate_budgets(web, monkeypatch):

@@ -27,7 +27,7 @@ import os
 import socket
 import sys
 from base64 import urlsafe_b64decode, urlsafe_b64encode
-from collections import deque
+from collections import OrderedDict, deque
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from ipaddress import ip_address
@@ -46,7 +46,10 @@ SECRET = os.environ.get("AUTH_SESSION_SECRET", "").encode()
 TRUSTED_PROXY = os.environ.get("AUTH_TRUSTED_PROXY", "")
 LOGIN_WINDOW = 5 * 60
 LOGIN_PER_ADDRESS = 10
-LOGIN_TOTAL = 60
+# No budget shared by all addresses (owner, 2026-11-07): anyone could use it up and keep the owner out of the login,
+# and the access key is long and random, so guesses from many addresses gain nothing. The memory stays bounded
+# instead: past this many addresses, the one seen longest ago is forgotten.
+LOGIN_ADDRESSES = 10_000
 PASSWORD_CHECKS = 2
 LOGIN_BODY_LIMIT = 4096
 REQUEST_SECONDS = 10
@@ -66,21 +69,31 @@ OPEN_PATHS = frozenset({"/login", "/logout", "/favicon.ico", "/brand/aristotle-b
 
 
 class LoginLimits:
+    """At most LOGIN_PER_ADDRESS sign-in attempts per address in LOGIN_WINDOW seconds."""
+
     def __init__(self, clock=monotonic):
         self.clock = clock
-        self.attempts: deque[tuple[float, str]] = deque()
+        # address -> its attempt times in the window, ordered by last attempt (longest ago first)
+        self.attempts: OrderedDict[str, deque[float]] = OrderedDict()
         self.lock = Lock()
 
     def allow(self, address: str) -> bool:
         with self.lock:
             now = self.clock()
-            while self.attempts and self.attempts[0][0] <= now - LOGIN_WINDOW:
-                self.attempts.popleft()
-            if len(self.attempts) >= LOGIN_TOTAL:
-                return False
-            if sum(peer == address for _, peer in self.attempts) >= LOGIN_PER_ADDRESS:
-                return False
-            self.attempts.append((now, address))
+            start = now - LOGIN_WINDOW
+            # Forget addresses whose last attempt has left the window. In this order, the first one still
+            # inside it ends the search.
+            while self.attempts and next(iter(self.attempts.values()))[-1] <= start:
+                self.attempts.popitem(last=False)
+            times = self.attempts.setdefault(address, deque())
+            while times and times[0] <= start:
+                times.popleft()
+            if len(times) >= LOGIN_PER_ADDRESS:
+                return False  # a refused attempt keeps the address's place: only counted attempts move it
+            times.append(now)
+            self.attempts.move_to_end(address)
+            while len(self.attempts) > LOGIN_ADDRESSES:
+                self.attempts.popitem(last=False)
             return True
 
 
