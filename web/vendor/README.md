@@ -2,8 +2,9 @@
 
 The page's libraries, copied unchanged from unpkg (2026-10-25) so visitors' browsers load nothing from another host
 (the privacy policy names no third party in the browser). To update one: download the new version, check its hash
-against the one unpkg/npm publishes, replace the file and its name in the page, and update this table. React and
-Lucide carry their licence notice in the file; Babel's minified file has none, so its licence is `LICENSE-babel.txt`.
+against the one unpkg/npm publishes, replace the file and its name in the page, and update this table. The full
+licence texts sit beside the files: `LICENSE-react.txt` (React and React DOM), `LICENSE-lucide.txt` and
+`LICENSE-babel.txt`.
 
 | File | Source | Licence | sha384 |
 |---|---|---|---|
