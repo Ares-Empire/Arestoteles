@@ -1,10 +1,12 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]  # 77: the SPDX `license` string (PEP 639)
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "arestoteles"
 version = "1.0.0"
+license = "PolyForm-Noncommercial-1.0.0"
+license-files = ["LICENSE.md"]
 description = "Arestoteles: the server of Patrik's Weltbild vault for the iPhone app (and the arestoteles.de website)"
 requires-python = ">=3.11"
 dependencies = [

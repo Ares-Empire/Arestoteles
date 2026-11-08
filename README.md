@@ -21,9 +21,11 @@ edits by the vault's own rules.
   (EmbeddingGemma, 4-bit) runs on the CPU through ONNX Runtime, so nothing is generated: every result is a passage as it
   stands.
 - **Stays in sync.** The vault is pulled every minute and compatible app commits are replayed on top. Pending work
-  that conflicts is kept on a recovery branch and reported unhealthy until reconciled. Edits check supplied
-  note versions; enforcement becomes mandatory after the staged client rollout. Interrupted writes recover from a
-  journal. See the [edit-safety audit](docs/225-edit-safety.md).
+  that conflicts is kept on a recovery branch and reported unhealthy until reconciled. Each edit the app makes to a
+  note carries the version of the note it was made on, and an edit made on an older version is refused instead of
+  written over newer text. Older app builds leave the version out of some edits; the server still accepts those until
+  it is set to require one. Interrupted writes recover from a journal. See the
+  [edit-safety audit](docs/225-edit-safety.md).
 
 ## Screenshots
 
@@ -88,3 +90,18 @@ The skip check permits only the documented absent model files in `tests/test_sea
 fails CI. Model files are not downloaded in CI. `tests/test_real_vault.py` stays local and is explicitly excluded
 from CI; the ordinary `.venv/bin/python -m pytest -q` includes it where the real vault is available. No real vault,
 credentials or external services are needed for the CI suite.
+
+## License
+
+Free to use, change and share for non-commercial purposes, such as study, research, hobby projects, schools and
+charities, under the [PolyForm Noncommercial License 1.0.0](LICENSE.md). Commercial use, also inside a company, needs
+permission: [ares-empire.de/contact](https://www.ares-empire.de/contact).
+
+The licence covers the code. It does not cover the Ares names, the busts, the app icons or the screenshots. Parts from
+others keep their own licences:
+
+- React, React DOM and Babel (MIT) and Lucide (ISC) in `web/vendor/`: see [web/vendor/README.md](web/vendor/README.md).
+- The fonts Space Grotesk and JetBrains Mono in `web/fonts/` (SIL Open Font License 1.1): see
+  [OFL-SpaceGrotesk.txt](web/fonts/OFL-SpaceGrotesk.txt) and [OFL-JetBrainsMono.txt](web/fonts/OFL-JetBrainsMono.txt).
+- The meaning model (EmbeddingGemma) is downloaded, not part of this repository, and comes under Google's
+  [Gemma Terms of Use](https://ai.google.dev/gemma/terms).
